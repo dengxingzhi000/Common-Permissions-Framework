@@ -1,0 +1,36 @@
+spring:
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://192.168.18.130:3306/new-near-sync?useUnicode=true&characterEncoding=utf-8&zeroDateTimeBehavior=convertToNull&transformedBitIsBoolean=true&allowMultiQueries=true&useSSL=false&allowPublicKeyRetrieval=true
+    username: root
+    password: 123456
+  data:
+    redis:
+      host: 192.168.18.130
+      port: 6379
+      password: ""
+      database: 0
+      timeout: 5000ms
+      lettuce:
+        pool:
+          max-active: 200
+          max-wait: -1ms
+          max-idle: 10
+          min-idle: 5
+
+jwt:
+  secret: t+gG4GvjtxpXiYSW64mTNVK2TmnwtvHNXrp0TGjrGz9sd5XzzFJ7bw83puCeMoVS8Yp+9pRl78FK0L8XI3zlcg==
+  expiration: 3600000          # 1小时
+  refresh-expiration: 604800000 # 7天
+  issuer: bank-permission-system
+  header: Authorization
+  prefix: "Bearer "
+
+security:
+  max-login-attempts: 5      # 最大登录失败次数
+  lock-duration: 1800000      # 锁定时长30分钟
+  password-expire-days: 90    # 密码过期天数
+  session-timeout: 1800000    # 会话超时30分钟
+
+mybatis-plus:
+  type-handlers-package: com.frog.handler

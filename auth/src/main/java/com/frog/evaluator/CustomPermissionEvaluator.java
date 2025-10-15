@@ -1,0 +1,69 @@
+package com.frog.evaluator;
+
+import com.frog.domain.SecurityUser;
+import com.frog.service.PermissionService;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.access.PermissionEvaluator;
+import org.springframework.security.core.Authentication;
+import org.springframework.stereotype.Component;
+
+import java.io.Serializable;
+
+/**
+ * 自定义权限评估器
+ *
+ * @author Deng
+ * createData 2025/10/14 14:59
+ * @version 1.0
+ */
+@Component
+@RequiredArgsConstructor
+@Slf4j
+public class CustomPermissionEvaluator implements PermissionEvaluator {
+
+    private final PermissionService permissionService;
+
+    /**
+     * 判断用户是否有指定权限
+     */
+    @Override
+    public boolean hasPermission(Authentication authentication, Object targetDomainObject,
+                                 Object permission) {
+        if (authentication == null || !(authentication.getPrincipal() instanceof SecurityUser user)) {
+            return false;
+        }
+
+        String permissionCode = permission.toString();
+
+        // 检查用户是否有该权限
+        boolean hasPermission = permissionService.hasPermission(user.getUserId(), permissionCode);
+
+        log.debug("Permission check - User: {}, Permission: {}, Result: {}",
+                user.getUsername(), permissionCode, hasPermission);
+
+        return hasPermission;
+    }
+
+    /**
+     * 判断用户是否有指定资源的权限（基于资源ID）
+     */
+    @Override
+    public boolean hasPermission(Authentication authentication, Serializable targetId,
+                                 String targetType, Object permission) {
+        if (authentication == null || !(authentication.getPrincipal() instanceof SecurityUser user)) {
+            return false;
+        }
+
+        // 可以实现更复杂的资源级权限控制
+        // 例如：检查用户是否可以访问特定ID的资源
+        boolean hasPermission = permissionService.hasResourcePermission(
+                user.getUserId(), targetType, targetId, permission.toString());
+
+        log.debug("Resource permission check - User: {}, TargetType: {}, TargetId: {}, Permission: {}, Result: {}",
+                user.getUsername(), targetType, targetId, permission, hasPermission);
+
+        return hasPermission;
+    }
+}
+

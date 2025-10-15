@@ -1,6 +1,8 @@
 package com.frog.common.response;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import lombok.Data;
+
 /**
  * 统一响应体
  *
@@ -15,6 +17,10 @@ public record ApiResponse<T>(
         T data,
         long timestamp
 ) {
+    public static <T> ApiResponse<T> success() {
+        return success(null);
+    }
+
     public static <T> ApiResponse<T> success(T data) {
         return new ApiResponse<>(200, "Success", data, System.currentTimeMillis());
     }

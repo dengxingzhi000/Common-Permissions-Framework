@@ -36,9 +36,12 @@
     <spring-cloud.version>2023.0.3</spring-cloud.version>
     <spring-cloud-alibaba.version>2023.0.3.3</spring-cloud-alibaba.version>
     <mysql.version>9.2.0</mysql.version>
-    <mybatis-plus.version>3.5.7</mybatis-plus.version>
+    <mybatis-plus.version>3.5.14</mybatis-plus.version>
     <org.projectlombok.version>1.18.38</org.projectlombok.version>
     <jjwt.version>0.13.0</jjwt.version>
+    <swagger.version>2.2.19</swagger.version>
+    <knife4j.version>4.4.0</knife4j.version>
+    <uuid-creator.version>6.1.1</uuid-creator.version>
   </properties>
 
 <dependencyManagement>
@@ -63,6 +66,11 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter</artifactId>
+        </dependency>
+        <!-- Spring Boot Starter Aop -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-aop</artifactId>
         </dependency>
         <!-- Spring Boot Starter Web -->
         <dependency>
@@ -101,6 +109,33 @@
             <groupId>com.baomidou</groupId>
             <artifactId>mybatis-plus-spring-boot3-starter</artifactId>
             <version>${mybatis-plus.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.baomidou</groupId>
+            <artifactId>mybatis-plus-jsqlparser</artifactId>
+            <version>${mybatis-plus.version}</version>
+        </dependency>
+        <!-- swagger -->
+        <dependency>
+            <groupId>io.swagger.core.v3</groupId>
+            <artifactId>swagger-core-jakarta</artifactId>
+            <version>${swagger.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.swagger.core.v3</groupId>
+            <artifactId>swagger-annotations-jakarta</artifactId>
+            <version>${swagger.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.github.xiaoymin</groupId>
+            <artifactId>knife4j-openapi3-jakarta-spring-boot-starter</artifactId>
+            <version>${knife4j.version}</version>
+        </dependency>
+        <!-- uuid -->
+        <dependency>
+            <groupId>com.github.f4b6a3</groupId>
+            <artifactId>uuid-creator</artifactId>
+            <version>${uuid-creator.version}</version>
         </dependency>
     </dependencies>
 </dependencyManagement>

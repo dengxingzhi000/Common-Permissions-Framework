@@ -15,11 +15,10 @@ import org.springframework.stereotype.Component;
 @ConfigurationProperties(prefix = "jwt")
 @Data
 public class JwtProperties {
-
-    private String jwtSecret;
-    private Long accessTokenValidity = 3600000L; // 1小时
-    private Long refreshTokenValidity = 604800000L; // 7天
-    private String issuer = "permission-system";
+    private String secret;
+    private Long expiration = 3600000L; // 1小时
+    private Long refreshExpiration = 604800000L; // 7天
+    private String issuer = "bank-permission-system";
     private String header = "Authorization";
     private String prefix = "Bearer ";
 }
