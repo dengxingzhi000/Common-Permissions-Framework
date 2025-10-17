@@ -1,11 +1,14 @@
 package com.frog.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.frog.annotation.AuditLog;
+import com.frog.common.annotation.AuditLog;
+import com.frog.common.domain.PageResult;
 import com.frog.common.response.ApiResponse;
 import com.frog.domain.dto.UserDTO;
-import com.frog.service.AuthService;
-import com.frog.service.UserService;
+import com.frog.service.Impl.SysAuthServiceImpl;
+import com.frog.service.ISysUserService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
@@ -24,22 +27,24 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/system/users")
 @RequiredArgsConstructor
+@Tag(name = "用户模块")
 public class SysUserController {
 
-    private final UserService userService;
-    private final AuthService authService;
+    private final ISysUserService userService;
+    private final SysAuthServiceImpl sysAuthServiceImpl;
 
     /**
      * 查询用户列表
      */
     @GetMapping
     @PreAuthorize("hasAuthority('system:user:list')")
-    public ApiResponse<Page<UserDTO>> list(@RequestParam(defaultValue = "1") Integer page,
+    @Operation(summary = "查询用户列表")
+    public ApiResponse<PageResult<UserDTO>> list(@RequestParam(defaultValue = "1") Integer page,
                                            @RequestParam(defaultValue = "10") Integer size,
                                            @RequestParam(required = false) String username,
                                            @RequestParam(required = false) Integer status) {
         Page<UserDTO> result = userService.listUsers(page, size, username, status);
-        return ApiResponse.success(result);
+        return ApiResponse.success(PageResult.of(result));
     }
 
     /**
@@ -128,7 +133,7 @@ public class SysUserController {
     @PreAuthorize("hasAuthority('system:user:edit')")
     @AuditLog(operation = "强制下线", businessType = "USER", riskLevel = 3)
     public ApiResponse<Void> forceLogout(@PathVariable UUID id, @RequestParam String reason) {
-        authService.forceLogout(id, reason);
+        sysAuthServiceImpl.forceLogout(id, reason);
         return ApiResponse.success();
     }
 }

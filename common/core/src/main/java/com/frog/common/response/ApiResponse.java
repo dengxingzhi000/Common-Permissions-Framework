@@ -1,7 +1,6 @@
 package com.frog.common.response;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import lombok.Data;
 
 /**
  * 统一响应体

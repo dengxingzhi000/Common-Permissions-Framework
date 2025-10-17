@@ -1,10 +1,10 @@
 package com.frog.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.frog.annotation.AuditLog;
+import com.frog.common.annotation.AuditLog;
 import com.frog.common.response.ApiResponse;
 import com.frog.domain.dto.RoleDTO;
-import com.frog.service.RoleService;
+import com.frog.service.ISysRoleService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
@@ -25,7 +25,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class SysRoleController {
 
-    private final RoleService roleService;
+    private final ISysRoleService roleService;
 
     /**
      * 查询角色列表

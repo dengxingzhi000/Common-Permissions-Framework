@@ -1,6 +1,6 @@
 package com.frog.service.Impl;
 
-import com.frog.domain.SecurityUser;
+import com.frog.common.domain.SecurityUser;
 import com.frog.domain.entity.SysUser;
 import com.frog.mapper.SysUserMapper;
 import lombok.RequiredArgsConstructor;

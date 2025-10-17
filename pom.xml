@@ -27,7 +27,7 @@
     <parent>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-parent</artifactId>
-      <version>3.5.4</version>
+      <version>3.2.4</version>
       <relativePath/>
   </parent>
 
@@ -81,6 +81,10 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-security</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
         </dependency>
         <!-- jwt -->
         <dependency>
@@ -146,12 +150,6 @@
           <groupId>org.projectlombok</groupId>
           <artifactId>lombok</artifactId>
           <version>${org.projectlombok.version}</version>
-      </dependency>
-      <!-- test -->
-      <dependency>
-          <groupId>org.springframework.boot</groupId>
-          <artifactId>spring-boot-starter-test</artifactId>
-          <scope>test</scope>
       </dependency>
   </dependencies>
 

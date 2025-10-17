@@ -1,0 +1,2 @@
+mybatis-plus:
+  type-handlers-package: com.frog.common.handler

@@ -1,0 +1,13 @@
+jwt:
+  secret: t+gG4GvjtxpXiYSW64mTNVK2TmnwtvHNXrp0TGjrGz9sd5XzzFJ7bw83puCeMoVS8Yp+9pRl78FK0L8XI3zlcg==
+  expiration: 3600000          # 1小时
+  refresh-expiration: 604800000 # 7天
+  issuer: bank-permission-system
+  header: Authorization
+  prefix: "Bearer "
+
+security:
+  max-login-attempts: 5      # 最大登录失败次数
+  lock-duration: 1800000      # 锁定时长30分钟
+  password-expire-days: 90    # 密码过期天数
+  session-timeout: 1800000    # 会话超时30分钟

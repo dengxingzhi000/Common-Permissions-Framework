@@ -1,7 +1,7 @@
 package com.frog.evaluator;
 
-import com.frog.domain.SecurityUser;
-import com.frog.service.PermissionService;
+import com.frog.common.domain.SecurityUser;
+import com.frog.service.ISysPermissionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.access.PermissionEvaluator;
@@ -22,7 +22,7 @@ import java.io.Serializable;
 @Slf4j
 public class CustomPermissionEvaluator implements PermissionEvaluator {
 
-    private final PermissionService permissionService;
+    private final ISysPermissionService permissionService;
 
     /**
      * 判断用户是否有指定权限

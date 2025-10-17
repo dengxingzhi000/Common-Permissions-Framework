@@ -1,10 +1,10 @@
 package com.frog.controller;
 
 import com.frog.common.response.ApiResponse;
+import com.frog.common.util.SecurityUtils;
 import com.frog.domain.dto.*;
-import com.frog.service.AuthService;
-import com.frog.service.UserService;
-import com.frog.util.SecurityUtils;
+import com.frog.service.Impl.SysAuthServiceImpl;
+import com.frog.service.ISysUserService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -25,8 +25,8 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class SysAuthController {
 
-    private final AuthService authService;
-    private final UserService userService;
+    private final SysAuthServiceImpl sysAuthServiceImpl;
+    private final ISysUserService userService;
 
     /**
      * 用户登录
@@ -38,7 +38,7 @@ public class SysAuthController {
         String deviceId = request.getDeviceId() != null ? request.getDeviceId() :
                 httpRequest.getHeader("X-Device-ID");
 
-        LoginResponse response = authService.login(request, ipAddress, deviceId);
+        LoginResponse response = sysAuthServiceImpl.login(request, ipAddress, deviceId);
         return ApiResponse.success(response);
     }
 
@@ -49,7 +49,7 @@ public class SysAuthController {
     public ApiResponse<Void> logout(HttpServletRequest request) {
         String token = getTokenFromRequest(request);
         UUID userId = SecurityUtils.getCurrentUserId();
-        authService.logout(token, userId, "用户主动登出");
+        sysAuthServiceImpl.logout(token, userId, "用户主动登出");
         return ApiResponse.success();
     }
 
@@ -63,7 +63,7 @@ public class SysAuthController {
         String deviceId = request.getDeviceId() != null ? request.getDeviceId() :
                 httpRequest.getHeader("X-Device-ID");
 
-        LoginResponse response = authService.refreshToken(
+        LoginResponse response = sysAuthServiceImpl.refreshToken(
                 request.getRefreshToken(), deviceId, ipAddress);
         return ApiResponse.success(response);
     }
@@ -74,7 +74,7 @@ public class SysAuthController {
     @GetMapping("/userinfo")
     public ApiResponse<UserInfo> getUserInfo() {
         UUID userId = SecurityUtils.getCurrentUserId();
-        String username = SecurityUtils.getCurrentUsername();
+        SecurityUtils.getCurrentUsername();
         // 从数据库查询完整用户信息
         UserInfo userInfo = userService.getUserInfo(userId);
         return ApiResponse.success(userInfo);

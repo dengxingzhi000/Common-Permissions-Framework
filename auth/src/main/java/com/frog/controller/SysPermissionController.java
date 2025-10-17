@@ -1,9 +1,9 @@
 package com.frog.controller;
 
-import com.frog.annotation.AuditLog;
+import com.frog.common.annotation.AuditLog;
 import com.frog.common.response.ApiResponse;
 import com.frog.domain.dto.PermissionDTO;
-import com.frog.service.PermissionService;
+import com.frog.service.ISysPermissionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
@@ -24,7 +24,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class SysPermissionController {
 
-    private final PermissionService permissionService;
+    private final ISysPermissionService permissionService;
 
     /**
      * 查询权限树
