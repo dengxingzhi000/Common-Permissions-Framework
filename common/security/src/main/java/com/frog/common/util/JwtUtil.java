@@ -5,8 +5,11 @@ import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
+import org.springframework.util.Assert;
+import org.springframework.util.StringUtils;
 
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
@@ -27,6 +30,10 @@ public class JwtUtil {
     private final JwtProperties jwtProperties;
     private final RedisTemplate<String, Object> redisTemplate;
 
+    // 添加一个默认密钥用于开发环境
+    @Value("${jwt.secret:t+gG4GvjtxpXiYSW64mTNVK2TmnwtvHNXrp0TGjrGz9sd5XzzFJ7bw83puCeMoVS8Yp+9pRl78FK0L8XI3zlcg==}")
+    private String defaultSecret;
+
     JwtUtil(JwtProperties jwtProperties, RedisTemplate<String, Object> redisTemplate) {
         this.jwtProperties = jwtProperties;
         this.redisTemplate = redisTemplate;
@@ -40,9 +47,19 @@ public class JwtUtil {
 
     @PostConstruct
     public void init() {
-        byte[] keyBytes = jwtProperties.getSecret().getBytes(StandardCharsets.UTF_8);
+        String secret = jwtProperties.getSecret();
+        
+        // 如果配置文件中的密钥为空，则使用默认密钥
+        if (!StringUtils.hasText(secret)) {
+            log.warn("JWT secret not found in configuration, using default secret");
+            secret = defaultSecret;
+        }
+        
+        Assert.hasText(secret, "JWT secret must be configured or have a default value");
+        
+        byte[] keyBytes = secret.getBytes(StandardCharsets.UTF_8);
         if (keyBytes.length < 64) {
-            throw new IllegalArgumentException("JWT secret must be at least 512 bits for HS512");
+            throw new IllegalArgumentException("JWT secret must be at least 512 bits for HS512, current length: " + keyBytes.length);
         }
         this.signingKey = Keys.hmacShaKeyFor(keyBytes);
         log.info("JWT signing key initialized successfully");

@@ -1,7 +1,7 @@
 jwt:
   secret: t+gG4GvjtxpXiYSW64mTNVK2TmnwtvHNXrp0TGjrGz9sd5XzzFJ7bw83puCeMoVS8Yp+9pRl78FK0L8XI3zlcg==
-  expiration: 3600000          # 1小时
-  refresh-expiration: 604800000 # 7天
+  expiration: 3600000
+  refresh-expiration: 604800000
   issuer: bank-permission-system
   header: Authorization
   prefix: "Bearer "

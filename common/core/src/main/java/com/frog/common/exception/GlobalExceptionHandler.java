@@ -34,27 +34,6 @@ import java.util.stream.Collectors;
 @Slf4j
 public class GlobalExceptionHandler {
 
-    @ExceptionHandler(AuthenticationException.class)
-    public ApiResponse<Void> handleAuthenticationException(AuthenticationException ex) {
-        return ApiResponse.fail(ResultCode.UNAUTHORIZED.getCode(), "Unauthorized: " + ex.getMessage());
-    }
-
-    @ExceptionHandler(AccessDeniedException.class)
-    public ApiResponse<Void> handleAccessDenied(AccessDeniedException ex) {
-        return ApiResponse.fail(ResultCode.FORBIDDEN.getCode(), "Forbidden: " + ex.getMessage());
-    }
-
-    @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ApiResponse<Void> handleValidationError(MethodArgumentNotValidException ex) {
-        String msg = ex.getBindingResult().getAllErrors().get(0).getDefaultMessage();
-        return ApiResponse.fail(ResultCode.VALIDATION_FAILED.getCode(), msg);
-    }
-
-    @ExceptionHandler(Exception.class)
-    public ApiResponse<Void> handleGenericException(Exception ex) {
-        return ApiResponse.fail(ResultCode.SERVER_ERROR.getCode(), ex.getMessage());
-    }
-
     /**
      * 业务异常
      */

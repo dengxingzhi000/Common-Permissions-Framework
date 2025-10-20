@@ -5,6 +5,8 @@ import com.baomidou.mybatisplus.extension.plugins.MybatisPlusInterceptor;
 import com.baomidou.mybatisplus.extension.plugins.inner.BlockAttackInnerInterceptor;
 import com.baomidou.mybatisplus.extension.plugins.inner.OptimisticLockerInnerInterceptor;
 import com.baomidou.mybatisplus.extension.plugins.inner.PaginationInnerInterceptor;
+import com.frog.common.handler.UUIDTypeHandler;
+import org.apache.ibatis.type.TypeHandlerRegistry;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -39,5 +41,16 @@ public class MybatisPlusConfig {
 
         return interceptor;
     }
-
+    
+    /**
+     * 注册自定义类型处理器
+     */
+    @Bean
+    public com.baomidou.mybatisplus.autoconfigure.ConfigurationCustomizer configurationCustomizer() {
+        return configuration -> {
+            TypeHandlerRegistry typeHandlerRegistry = configuration.getTypeHandlerRegistry();
+            // 注册UUID类型处理器
+            typeHandlerRegistry.register(java.util.UUID.class, UUIDTypeHandler.class);
+        };
+    }
 }
