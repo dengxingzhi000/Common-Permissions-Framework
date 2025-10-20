@@ -37,3 +37,8 @@ build/
 
 ### Mac OS ###
 .DS_Store
+
+# 忽略配置文件
+**/application.yaml
+**/application-dev.yaml
+**/application-prod.yaml
