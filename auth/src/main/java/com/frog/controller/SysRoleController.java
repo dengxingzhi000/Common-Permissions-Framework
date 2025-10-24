@@ -1,7 +1,7 @@
 package com.frog.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.frog.common.annotation.AuditLog;
+import com.frog.common.log.annotation.AuditLog;
 import com.frog.common.response.ApiResponse;
 import com.frog.domain.dto.RoleDTO;
 import com.frog.service.ISysRoleService;
@@ -24,7 +24,6 @@ import java.util.UUID;
 @RequestMapping("/api/system/roles")
 @RequiredArgsConstructor
 public class SysRoleController {
-
     private final ISysRoleService roleService;
 
     /**
@@ -54,7 +53,11 @@ public class SysRoleController {
      */
     @PostMapping
     @PreAuthorize("hasAuthority('system:role:add')")
-    @AuditLog(operation = "新增角色", businessType = "ROLE", riskLevel = 4)
+    @AuditLog(
+            operation = "新增角色",
+            businessType = "ROLE",
+            riskLevel = 4
+    )
     public ApiResponse<Void> add(@Validated @RequestBody RoleDTO roleDTO) {
         roleService.addRole(roleDTO);
         return ApiResponse.success();
@@ -65,7 +68,11 @@ public class SysRoleController {
      */
     @PutMapping("/{id}")
     @PreAuthorize("hasAuthority('system:role:edit')")
-    @AuditLog(operation = "修改角色", businessType = "ROLE", riskLevel = 4)
+    @AuditLog(
+            operation = "修改角色",
+            businessType = "ROLE",
+            riskLevel = 4
+    )
     public ApiResponse<Void> update(@PathVariable UUID id,
                                @Validated @RequestBody RoleDTO roleDTO) {
         roleDTO.setId(id);
@@ -78,7 +85,11 @@ public class SysRoleController {
      */
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAuthority('system:role:delete')")
-    @AuditLog(operation = "删除角色", businessType = "ROLE", riskLevel = 4)
+    @AuditLog(
+            operation = "删除角色",
+            businessType = "ROLE",
+            riskLevel = 4
+    )
     public ApiResponse<Void> delete(@PathVariable UUID id) {
         roleService.deleteRole(id);
         return ApiResponse.success();
@@ -89,7 +100,11 @@ public class SysRoleController {
      */
     @PostMapping("/{id}/grant-permissions")
     @PreAuthorize("hasAuthority('system:role:edit')")
-    @AuditLog(operation = "角色授权", businessType = "ROLE", riskLevel = 4)
+    @AuditLog(
+            operation = "角色授权",
+            businessType = "ROLE",
+            riskLevel = 4
+    )
     public ApiResponse<Void> grantPermissions(@PathVariable UUID id,
                                          @RequestBody List<UUID> permissionIds) {
         roleService.grantPermissions(id, permissionIds);

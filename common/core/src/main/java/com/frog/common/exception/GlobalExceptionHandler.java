@@ -32,7 +32,6 @@ import java.util.stream.Collectors;
 @RestControllerAdvice
 @Slf4j
 public class GlobalExceptionHandler {
-
     /**
      * 业务异常
      */

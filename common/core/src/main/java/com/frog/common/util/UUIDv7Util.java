@@ -13,7 +13,6 @@ import java.util.UUID;
  * @version 1.0
  */
 public class UUIDv7Util {
-
     /**
      * 生成UUIDv7
      */

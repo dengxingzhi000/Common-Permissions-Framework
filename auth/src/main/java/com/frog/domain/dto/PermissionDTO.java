@@ -17,7 +17,6 @@ import java.util.UUID;
  */
 @Data
 public class PermissionDTO {
-
     private UUID id;
 
     @NotNull(message = "父级ID不能为空")

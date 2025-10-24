@@ -1,6 +1,6 @@
 package com.frog.evaluator;
 
-import com.frog.common.domain.SecurityUser;
+import com.frog.common.security.domain.SecurityUser;
 import com.frog.service.ISysPermissionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -21,7 +21,6 @@ import java.io.Serializable;
 @RequiredArgsConstructor
 @Slf4j
 public class CustomPermissionEvaluator implements PermissionEvaluator {
-
     private final ISysPermissionService permissionService;
 
     /**

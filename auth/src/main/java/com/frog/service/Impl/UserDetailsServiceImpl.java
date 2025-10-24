@@ -1,7 +1,6 @@
 package com.frog.service.Impl;
 
-import com.frog.common.domain.SecurityUser;
-import com.frog.domain.entity.SysUser;
+import com.frog.common.security.domain.SecurityUser;
 import com.frog.mapper.SysUserMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -24,11 +23,14 @@ import java.util.Set;
 @RequiredArgsConstructor
 @Slf4j
 public class UserDetailsServiceImpl implements UserDetailsService {
-
     private final SysUserMapper sysUserMapper;
 
     @Override
-    @Cacheable(value = "userDetails", key = "#username", unless = "#result == null")
+    @Cacheable(
+            value = "userDetails",
+            key = "#username",
+            unless = "#result == null"
+    )
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
         // 查询用户基本信息
         var user = sysUserMapper.findByUsername(username);
@@ -43,30 +45,25 @@ public class UserDetailsServiceImpl implements UserDetailsService {
         // 查询用户权限（包括角色权限）
         Set<String> permissions = sysUserMapper.findPermissionsByUserId(user.getId());
 
-        // 构建SecurityUser
-        SecurityUser securityUser = createSecurityUser(user, roles, permissions);
+        SecurityUser securityUser = SecurityUser.builder()
+                .userId(user.getId())
+                .username(user.getUsername())
+                .password(user.getPassword())
+                .realName(user.getRealName())
+                .deptId(user.getDeptId())
+                .status(user.getStatus())
+                .accountType(user.getAccountType())
+                .userLevel(user.getUserLevel())
+                .roles(roles)
+                .permissions(permissions)
+                .twoFactorEnabled(user.getTwoFactorEnabled() == 1)
+                .passwordExpireTime(user.getPasswordExpireTime())
+                .forceChangePassword(user.getForceChangePassword() == 1)
+                .build();
 
         log.info("User loaded: {}, Roles: {}, Permissions count: {}",
                 username, roles, permissions.size());
 
-        return securityUser;
-    }
-
-    private SecurityUser createSecurityUser(SysUser user, Set<String> roles, Set<String> permissions) {
-        SecurityUser securityUser = new SecurityUser();
-        securityUser.setUserId(user.getId());
-        securityUser.setUsername(user.getUsername());
-        securityUser.setPassword(user.getPassword());
-        securityUser.setRealName(user.getRealName());
-        securityUser.setDeptId(user.getDeptId());
-        securityUser.setStatus(user.getStatus());
-        securityUser.setAccountType(user.getAccountType());
-        securityUser.setUserLevel(user.getUserLevel());
-        securityUser.setRoles(roles);
-        securityUser.setPermissions(permissions);
-        securityUser.setTwoFactorEnabled(user.getTwoFactorEnabled() == 1);
-        securityUser.setPasswordExpireTime(user.getPasswordExpireTime());
-        securityUser.setForceChangePassword(user.getForceChangePassword() == 1);
         return securityUser;
     }
 }

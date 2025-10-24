@@ -1,10 +1,11 @@
 package com.frog.service.Impl;
 
-import com.frog.common.domain.SecurityUser;
-import com.frog.common.properties.JwtProperties;
-import com.frog.common.properties.SecurityProperties;
-import com.frog.common.service.ISysAuditLogService;
-import com.frog.common.util.JwtUtil;
+import com.frog.common.metrics.BusinessMetrics;
+import com.frog.common.security.domain.SecurityUser;
+import com.frog.common.security.properties.JwtProperties;
+import com.frog.common.security.properties.SecurityProperties;
+import com.frog.common.security.util.JwtUtils;
+import com.frog.common.log.service.ISysAuditLogService;
 import com.frog.domain.dto.LoginRequest;
 import com.frog.domain.dto.LoginResponse;
 import com.frog.mapper.SysUserMapper;
@@ -24,7 +25,6 @@ import org.springframework.util.StringUtils;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
-import java.util.Date;
 import java.util.Set;
 import java.util.UUID;
 
@@ -39,14 +39,14 @@ import java.util.UUID;
 @RequiredArgsConstructor
 @Slf4j
 public class SysAuthServiceImpl implements ISysAuthService {
-
     private final AuthenticationManager authenticationManager;
-    private final JwtUtil jwtUtil;
+    private final JwtUtils jwtUtils;
     private final SysUserMapper sysUserMapper;
     private final ISysAuditLogService auditLogService;
     private final RedisTemplate<String, Object> redisTemplate;
     private final SecurityProperties securityProperties;
     private final JwtProperties jwtProperties;
+    private final BusinessMetrics businessMetrics;
 
     private static final String LOGIN_ATTEMPTS_PREFIX = "login:attempts:";
     private static final String ACCOUNT_LOCK_PREFIX = "account:lock:";
@@ -99,19 +99,22 @@ public class SysAuthServiceImpl implements ISysAuthService {
             Set<String> roles = user.getRoles();
             Set<String> permissions = user.getPermissions();
 
-            String accessToken = jwtUtil.generateAccessToken(
+            String accessToken = jwtUtils.generateAccessToken(
                     user.getUserId(), username, roles, permissions, deviceId, ipAddress);
-            String refreshToken = jwtUtil.generateRefreshToken(
+            String refreshToken = jwtUtils.generateRefreshToken(
                     user.getUserId(), username, deviceId);
 
             // 7. 清除登录失败记录
             clearLoginAttempts(username);
 
             // 8. 更新最后登录信息
-            sysUserMapper.updateLastLogin(user.getUserId(), ipAddress, new Date());
+            sysUserMapper.updateLastLogin(user.getUserId(), ipAddress, LocalDateTime.now());
 
             // 9. 记录登录日志
             auditLogService.recordLogin(user.getUserId(), username, ipAddress, true, "登录成功");
+
+            // 10. 记录登录成功指标
+            businessMetrics.recordLogin(true, deviceId);
 
             log.info("User login success: {}, IP: {}, Device: {}", username, ipAddress, deviceId);
 
@@ -140,6 +143,8 @@ public class SysAuthServiceImpl implements ISysAuthService {
             }
 
             log.warn("Login failed for user: {}, IP: {}, Reason: {}", username, ipAddress, e.getMessage());
+
+            businessMetrics.recordLogin(false, deviceId);
             throw new BadCredentialsException(message);
         }
     }
@@ -148,7 +153,7 @@ public class SysAuthServiceImpl implements ISysAuthService {
      * 用户登出
      */
     public void logout(String token, UUID userId, String reason) {
-        jwtUtil.revokeToken(token, reason != null ? reason : "用户主动登出");
+        jwtUtils.revokeToken(token, reason != null ? reason : "用户主动登出");
         auditLogService.recordLogout(userId, "登出成功");
         log.info("User logout: UserId={}", userId);
     }
@@ -157,18 +162,18 @@ public class SysAuthServiceImpl implements ISysAuthService {
      * 刷新Token
      */
     public LoginResponse refreshToken(String refreshToken, String deviceId, String ipAddress) {
-        if (!jwtUtil.validateRefreshToken(refreshToken)) {
+        if (!jwtUtils.validateRefreshToken(refreshToken)) {
             throw new BadCredentialsException("刷新令牌无效或已过期");
         }
 
-        UUID userId = jwtUtil.getUserIdFromToken(refreshToken);
-        String username = jwtUtil.getUsernameFromToken(refreshToken);
+        UUID userId = jwtUtils.getUserIdFromToken(refreshToken);
+        String username = jwtUtils.getUsernameFromToken(refreshToken);
 
         // 重新获取用户权限
         Set<String> roles = sysUserMapper.findRolesByUserId(userId);
         Set<String> permissions = sysUserMapper.findPermissionsByUserId(userId);
 
-        String newAccessToken = jwtUtil.refreshToken(
+        String newAccessToken = jwtUtils.refreshToken(
                 refreshToken, roles, permissions, deviceId, ipAddress);
 
         log.info("Token refreshed for user: {}", username);
@@ -187,7 +192,7 @@ public class SysAuthServiceImpl implements ISysAuthService {
      * 强制用户下线
      */
     public void forceLogout(UUID userId, String reason) {
-        jwtUtil.revokeAllUserTokens(userId);
+        jwtUtils.revokeAllUserTokens(userId);
         auditLogService.recordLogout(userId, "管理员强制下线: " + reason);
         log.info("User force logout: UserId={}, Reason={}", userId, reason);
     }

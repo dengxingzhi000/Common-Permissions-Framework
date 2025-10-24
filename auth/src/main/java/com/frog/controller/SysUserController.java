@@ -1,7 +1,7 @@
 package com.frog.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.frog.common.annotation.AuditLog;
+import com.frog.common.log.annotation.AuditLog;
 import com.frog.common.domain.PageResult;
 import com.frog.common.response.ApiResponse;
 import com.frog.domain.dto.UserDTO;
@@ -29,7 +29,6 @@ import java.util.UUID;
 @RequiredArgsConstructor
 @Tag(name = "用户模块")
 public class SysUserController {
-
     private final ISysUserService userService;
     private final SysAuthServiceImpl sysAuthServiceImpl;
 
@@ -62,7 +61,10 @@ public class SysUserController {
      */
     @PostMapping
     @PreAuthorize("hasAuthority('system:user:add')")
-    @AuditLog(operation = "新增用户", businessType = "USER")
+    @AuditLog(
+            operation = "新增用户",
+            businessType = "USER"
+    )
     public ApiResponse<Void> add(@Validated @RequestBody UserDTO userDTO) {
         userService.addUser(userDTO);
         return ApiResponse.success();
@@ -73,7 +75,10 @@ public class SysUserController {
      */
     @PutMapping("/{id}")
     @PreAuthorize("hasAuthority('system:user:edit')")
-    @AuditLog(operation = "修改用户", businessType = "USER")
+    @AuditLog(
+            operation = "修改用户",
+            businessType = "USER"
+    )
     public ApiResponse<Void> update(@PathVariable UUID id,
                                @Validated @RequestBody UserDTO userDTO) {
         userDTO.setId(id);
@@ -86,7 +91,11 @@ public class SysUserController {
      */
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAuthority('system:user:delete')")
-    @AuditLog(operation = "删除用户", businessType = "USER", riskLevel = 4)
+    @AuditLog(
+            operation = "删除用户",
+            businessType = "USER",
+            riskLevel = 4
+    )
     public ApiResponse<Void> delete(@PathVariable UUID id) {
         userService.deleteUser(id);
         return ApiResponse.success();
@@ -97,7 +106,11 @@ public class SysUserController {
      */
     @PostMapping("/{id}/reset-password")
     @PreAuthorize("hasAuthority('system:user:reset')")
-    @AuditLog(operation = "重置密码", businessType = "USER", riskLevel = 3)
+    @AuditLog(
+            operation = "重置密码",
+            businessType = "USER",
+            riskLevel = 3
+    )
     public ApiResponse<String> resetPassword(@PathVariable UUID id) {
         String newPassword = userService.resetPassword(id);
         return ApiResponse.success(newPassword);
@@ -108,7 +121,11 @@ public class SysUserController {
      */
     @PostMapping("/{id}/grant-roles")
     @PreAuthorize("hasAuthority('system:user:grant')")
-    @AuditLog(operation = "授权角色", businessType = "USER", riskLevel = 4)
+    @AuditLog(
+            operation = "授权角色",
+            businessType = "USER",
+            riskLevel = 4
+    )
     public ApiResponse<Void> grantRoles(@PathVariable UUID id,
                                    @RequestBody List<UUID> roleIds) {
         userService.grantRoles(id, roleIds);
@@ -120,7 +137,11 @@ public class SysUserController {
      */
     @PostMapping("/{id}/lock")
     @PreAuthorize("hasAuthority('system:user:edit')")
-    @AuditLog(operation = "锁定用户", businessType = "USER", riskLevel = 3)
+    @AuditLog(
+            operation = "锁定用户",
+            businessType = "USER",
+            riskLevel = 3
+    )
     public ApiResponse<Void> lockUser(@PathVariable UUID id, @RequestParam Boolean lock) {
         userService.lockUser(id, lock);
         return ApiResponse.success();
@@ -131,7 +152,11 @@ public class SysUserController {
      */
     @PostMapping("/{id}/force-logout")
     @PreAuthorize("hasAuthority('system:user:edit')")
-    @AuditLog(operation = "强制下线", businessType = "USER", riskLevel = 3)
+    @AuditLog(
+            operation = "强制下线",
+            businessType = "USER",
+            riskLevel = 3
+    )
     public ApiResponse<Void> forceLogout(@PathVariable UUID id, @RequestParam String reason) {
         sysAuthServiceImpl.forceLogout(id, reason);
         return ApiResponse.success();

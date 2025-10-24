@@ -1,6 +1,6 @@
 package com.frog.controller;
 
-import com.frog.common.annotation.AuditLog;
+import com.frog.common.log.annotation.AuditLog;
 import com.frog.common.response.ApiResponse;
 import com.frog.domain.dto.PermissionDTO;
 import com.frog.service.ISysPermissionService;
@@ -23,7 +23,6 @@ import java.util.UUID;
 @RequestMapping("/api/system/permissions")
 @RequiredArgsConstructor
 public class SysPermissionController {
-
     private final ISysPermissionService permissionService;
 
     /**
@@ -41,7 +40,11 @@ public class SysPermissionController {
      */
     @PostMapping
     @PreAuthorize("hasAuthority('system:permission:add')")
-    @AuditLog(operation = "新增权限", businessType = "PERMISSION", riskLevel = 4)
+    @AuditLog(
+            operation = "新增权限",
+            businessType = "PERMISSION",
+            riskLevel = 4
+    )
     public ApiResponse<Void> add(@Validated @RequestBody PermissionDTO permissionDTO) {
         permissionService.addPermission(permissionDTO);
         return ApiResponse.success();
@@ -52,7 +55,11 @@ public class SysPermissionController {
      */
     @PutMapping("/{id}")
     @PreAuthorize("hasAuthority('system:permission:edit')")
-    @AuditLog(operation = "修改权限", businessType = "PERMISSION", riskLevel = 4)
+    @AuditLog(
+            operation = "修改权限",
+            businessType = "PERMISSION",
+            riskLevel = 4
+    )
     public ApiResponse<Void> update(@PathVariable UUID id,
                                    @Validated @RequestBody PermissionDTO permissionDTO) {
         permissionDTO.setId(id);
@@ -65,7 +72,11 @@ public class SysPermissionController {
      */
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAuthority('system:permission:delete')")
-    @AuditLog(operation = "删除权限", businessType = "PERMISSION", riskLevel = 4)
+    @AuditLog(
+            operation = "删除权限",
+            businessType = "PERMISSION",
+            riskLevel = 4
+    )
     public ApiResponse<Void> delete(@PathVariable UUID id) {
         permissionService.deletePermission(id);
         return ApiResponse.success();

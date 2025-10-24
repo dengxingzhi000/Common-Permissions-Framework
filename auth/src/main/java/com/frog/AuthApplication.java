@@ -9,6 +9,8 @@ import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
 
+import java.util.Arrays;
+
 /**
  * 认证服务
  *
@@ -18,17 +20,17 @@ import org.springframework.transaction.annotation.EnableTransactionManagement;
  */
 @SpringBootApplication
 @EnableAsync
-@MapperScan({"com.frog.mapper", "com.frog.common.mapper"})
+@MapperScan({"com.frog.mapper", "com.frog.common.log.mapper"})
 @EnableTransactionManagement
 @EnableCaching
 @EnableScheduling
-@ComponentScan(basePackages = {"com.frog", "com.frog.common"}) 
+@ComponentScan(basePackages = {"com.frog", "com.frog.common"})
 public class AuthApplication {
 
     public static void main(String[] args) {
         SpringApplication.run(AuthApplication.class, args);
-        System.out.println("Swagger文档地址: http://localhost:8106/api/swagger-ui.html");
-        System.out.println("默认管理员账号: admin");
-        System.out.println("默认管理员密码: admin");
+//        System.out.println("Swagger文档地址: http://localhost:8106/api/swagger-ui.html");
+//        System.out.println("默认管理员账号: admin");
+//        System.out.println("默认管理员密码: admin");
     }
 }

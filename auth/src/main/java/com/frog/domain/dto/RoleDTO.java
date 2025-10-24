@@ -5,6 +5,7 @@ import jakarta.validation.constraints.*;
 import lombok.Data;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
@@ -18,7 +19,6 @@ import java.util.UUID;
  */
 @Data
 public class RoleDTO {
-
     private UUID id;
 
     @NotBlank(message = "角色编码不能为空")
@@ -50,10 +50,10 @@ public class RoleDTO {
     private Integer sortOrder;
 
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "GMT+8")
-    private Date createTime;
+    private LocalDateTime createTime;
 
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "GMT+8")
-    private Date updateTime;
+    private LocalDateTime updateTime;
 
     // 关联数据
     private List<UUID> permissionIds;

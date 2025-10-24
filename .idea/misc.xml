@@ -9,10 +9,23 @@
     </option>
     <option name="ignoredFiles">
       <set>
+        <option value="$PROJECT_DIR$/ai/pom.xml" />
         <option value="$PROJECT_DIR$/app.user.management/pom.xml" />
+        <option value="$PROJECT_DIR$/common/cache/pom.xml" />
+        <option value="$PROJECT_DIR$/common/log/pom.xml" />
+        <option value="$PROJECT_DIR$/common/metrics/pom.xml" />
+        <option value="$PROJECT_DIR$/common/mybatisPlus/pom.xml" />
+        <option value="$PROJECT_DIR$/common/rabbitMQ/pom.xml" />
+        <option value="$PROJECT_DIR$/common/redis/pom.xml" />
+        <option value="$PROJECT_DIR$/common/security/pom.xml" />
+        <option value="$PROJECT_DIR$/common/sentinel/pom.xml" />
+        <option value="$PROJECT_DIR$/common/swagger/pom.xml" />
         <option value="$PROJECT_DIR$/common/test/pom.xml" />
+        <option value="$PROJECT_DIR$/common/trace/pom.xml" />
+        <option value="$PROJECT_DIR$/common/uaa/pom.xml" />
         <option value="$PROJECT_DIR$/nacos/pom.xml" />
         <option value="$PROJECT_DIR$/newnearsync.server/pom.xml" />
+        <option value="$PROJECT_DIR$/sentinel/pom.xml" />
       </set>
     </option>
   </component>
