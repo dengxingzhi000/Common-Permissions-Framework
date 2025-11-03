@@ -2,6 +2,7 @@ package com.frog.service.Impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.frog.common.response.ResultCode;
 import com.frog.common.security.util.SecurityUtils;
 import com.frog.common.util.UUIDv7Util;
 import com.frog.domain.dto.PermissionDTO;
@@ -77,7 +78,7 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
     public UserDTO getUserById(UUID id) {
         SysUser user = userMapper.selectById(id);
         if (user == null) {
-            throw new BusinessException("用户不存在");
+            throw new BusinessException(ResultCode.USER_NOT_FOUND.getCode(), ResultCode.USER_NOT_FOUND.getMessage());
         }
 
         UserDTO userDTO = convertToDTO(user);
@@ -105,7 +106,7 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
     public UserInfo getUserInfo(UUID userId) {
         SysUser user = userMapper.selectById(userId);
         if (user == null) {
-            throw new BusinessException("用户不存在");
+            throw new BusinessException(ResultCode.USER_NOT_FOUND.getCode(), ResultCode.USER_NOT_FOUND.getMessage());
         }
 
         UserInfo userInfo = UserInfo.builder()
@@ -144,7 +145,7 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
     public void addUser(UserDTO userDTO) {
         // 检查用户名是否存在
         if (userMapper.existsByUsername(userDTO.getUsername())) {
-            throw new BusinessException("用户已存在");
+            throw new BusinessException(ResultCode.USER_EXIST.getCode(), ResultCode.USER_EXIST.getMessage());
         }
 
         SysUser user = new SysUser();
@@ -186,13 +187,11 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
     public void updateUser(UserDTO userDTO) {
         SysUser existUser = userMapper.selectById(userDTO.getId());
         if (existUser == null) {
-            throw new BusinessException("用户不存在");
+            throw new BusinessException(ResultCode.USER_NOT_FOUND.getCode(), ResultCode.USER_NOT_FOUND.getMessage());
         }
 
         SysUser user = new SysUser();
         BeanUtils.copyProperties(userDTO, user);
-        user.setUpdateBy(SecurityUtils.getCurrentUserId());
-        user.setUpdateTime(LocalDateTime.now());
 
         // 密码不在此处修改
         user.setPassword(null);
@@ -221,18 +220,17 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
     public void deleteUser(UUID id) {
         SysUser user = userMapper.selectById(id);
         if (user == null) {
-            throw new BusinessException("用户不存在");
+            throw new BusinessException(ResultCode.USER_NOT_FOUND.getCode(), ResultCode.USER_NOT_FOUND.getMessage());
         }
 
         // 不能删除超级管理员
-        //todo
-        if (user.getId().equals(1L)) {
-            throw new BusinessException("不能删除超级管理员");
+        if (user.getId().equals(UUID.fromString("019a0aee-3b74-7bfc-b34f-48b5428d4875"))) {
+            throw new BusinessException(ResultCode.USER_CANNOT_DELETE_ADMIN.getCode(), ResultCode.USER_CANNOT_DELETE_ADMIN.getMessage());
         }
 
         // 不能删除自己
         if (user.getId().equals(SecurityUtils.getCurrentUserId())) {
-            throw new BusinessException("不能删除当前登录用户");
+            throw new BusinessException(ResultCode.USER_CANNOT_DELETE_SELF.getCode(), ResultCode.USER_CANNOT_DELETE_SELF.getMessage());
         }
 
         userMapper.deleteById(id);
@@ -344,7 +342,7 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
     public void lockUser(UUID id, Boolean lock) {
         SysUser user = userMapper.selectById(id);
         if (user == null) {
-            throw new BusinessException("用户不存在");
+            throw new BusinessException(ResultCode.USER_NOT_FOUND.getCode(), ResultCode.USER_NOT_FOUND.getMessage());
         }
 
         if (lock) {
@@ -356,9 +354,6 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
             user.setLockedUntil(null);
             user.setLoginAttempts(0);
         }
-
-        user.setUpdateBy(SecurityUtils.getCurrentUserId());
-        user.setUpdateTime(LocalDateTime.now());
 
         userMapper.updateById(user);
 

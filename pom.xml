@@ -21,6 +21,7 @@
         <module>common/data</module>
         <module>common/integration</module>
         <module>common/monitoring</module>
+        <module>common/common-api</module>
     </modules>
 
     <parent>

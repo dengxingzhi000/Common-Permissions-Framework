@@ -4,6 +4,8 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.frog.common.log.annotation.AuditLog;
 import com.frog.common.domain.PageResult;
 import com.frog.common.response.ApiResponse;
+import com.frog.common.security.util.SecurityUtils;
+import com.frog.domain.dto.ChangePasswordRequest;
 import com.frog.domain.dto.UserDTO;
 import com.frog.service.Impl.SysAuthServiceImpl;
 import com.frog.service.ISysUserService;
@@ -98,6 +100,16 @@ public class SysUserController {
     )
     public ApiResponse<Void> delete(@PathVariable UUID id) {
         userService.deleteUser(id);
+        return ApiResponse.success();
+    }
+
+    /**
+     * 修改密码
+     */
+    @PostMapping("/change-password")
+    public ApiResponse<Void> changePassword(@Validated @RequestBody ChangePasswordRequest request) {
+        UUID userId = SecurityUtils.getCurrentUserId();
+        userService.changePassword(userId, request.getOldPassword(), request.getNewPassword());
         return ApiResponse.success();
     }
 

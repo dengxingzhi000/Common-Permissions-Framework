@@ -22,7 +22,6 @@ import java.util.concurrent.TimeUnit;
 @Component
 @RequiredArgsConstructor
 public class MultiLevelCache {
-
     private final RedisTemplate<String, Object> redisTemplate;
 
     // L1缓存 - Caffeine

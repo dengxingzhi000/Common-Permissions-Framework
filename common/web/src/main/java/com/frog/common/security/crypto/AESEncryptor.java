@@ -1,5 +1,6 @@
 package com.frog.common.security.crypto;
 
+import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
@@ -24,7 +25,7 @@ public class AESEncryptor {
 
     private AES aes;
 
-    @jakarta.annotation.PostConstruct
+    @PostConstruct
     public void init() {
         byte[] key = aesKey.getBytes(StandardCharsets.UTF_8);
         this.aes = SecureUtil.aes(key);

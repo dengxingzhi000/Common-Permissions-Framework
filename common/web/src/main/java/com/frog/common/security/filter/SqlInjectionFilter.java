@@ -24,7 +24,6 @@ import java.io.IOException;
 @Component
 @Slf4j
 public class SqlInjectionFilter implements Filter {
-
     // SQL注入关键字正则
     private static final Pattern SQL_INJECTION_PATTERN = Pattern.compile(
             "(?:')|(?:--)|(/\\*(?:.|[\\n\\r])*?\\*/)|"

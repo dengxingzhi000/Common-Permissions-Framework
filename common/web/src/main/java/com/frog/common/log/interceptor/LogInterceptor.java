@@ -19,7 +19,6 @@ import java.util.UUID;
  */
 @Slf4j
 public class LogInterceptor implements HandlerInterceptor {
-
     @Override
     public boolean preHandle(@NonNull HttpServletRequest request, @NonNull HttpServletResponse response, @NonNull Object handler) {
         // 设置RequestId

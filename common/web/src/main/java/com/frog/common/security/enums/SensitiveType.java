@@ -15,7 +15,6 @@ import java.util.function.Function;
 @Getter
 @AllArgsConstructor
 public enum SensitiveType {
-
     /**
      * 手机号脱敏：138****1234
      */

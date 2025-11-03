@@ -1,6 +1,7 @@
 package com.frog.common.exception;
 
 import com.frog.common.response.ApiResponse;
+import com.frog.common.response.ResultCode;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -49,7 +50,7 @@ public class GlobalExceptionHandler {
     public ApiResponse<Void> handleAuthenticationException(AuthenticationException e,
                                                            HttpServletRequest request) {
         log.warn("Authentication failed: {}, URI: {}", e.getMessage(), request.getRequestURI());
-        return ApiResponse.fail(401, "认证失败: " + e.getMessage());
+        return ApiResponse.fail(ResultCode.UNAUTHORIZED.getCode(), "认证失败: " + e.getMessage());
     }
 
     /**
@@ -59,7 +60,7 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.UNAUTHORIZED)
     public ApiResponse<Void> handleBadCredentialsException(BadCredentialsException e) {
         log.warn("Bad credentials: {}", e.getMessage());
-        return ApiResponse.fail(401, e.getMessage());
+        return ApiResponse.fail(ResultCode.UNAUTHORIZED.getCode(), e.getMessage());
     }
 
     /**
@@ -70,7 +71,7 @@ public class GlobalExceptionHandler {
     public ApiResponse<Void> handleAccessDeniedException(AccessDeniedException e,
                                                          HttpServletRequest request) {
         log.warn("Access denied: {}, URI: {}", e.getMessage(), request.getRequestURI());
-        return ApiResponse.fail(403, "权限不足，访问被拒绝");
+        return ApiResponse.fail(ResultCode.FORBIDDEN.getCode(), "权限不足，访问被拒绝");
     }
 
     /**
@@ -80,7 +81,7 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.LOCKED)
     public ApiResponse<Void> handleLockedException(LockedException e) {
         log.warn("Account locked: {}", e.getMessage());
-        return ApiResponse.fail(423, e.getMessage());
+        return ApiResponse.fail(ResultCode.USER_LOCKED.getCode(), e.getMessage());
     }
 
     /**
@@ -90,7 +91,7 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.TOO_MANY_REQUESTS)
     public ApiResponse<Void> handleRateLimitException(RateLimitException e) {
         log.warn("Rate limit exceeded: {}", e.getMessage());
-        return ApiResponse.fail(429, e.getMessage());
+        return ApiResponse.fail(ResultCode.TOO_MANY_REQUESTS.getCode(), e.getMessage());
     }
 
     /**
@@ -100,7 +101,7 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.UNAUTHORIZED)
     public ApiResponse<Void> handleUnauthorizedException(UnauthorizedException e) {
         log.warn("Unauthorized: {}", e.getMessage());
-        return ApiResponse.fail(401, e.getMessage());
+        return ApiResponse.fail(ResultCode.UNAUTHORIZED.getCode(), e.getMessage());
     }
 
     /**
@@ -127,7 +128,7 @@ public class GlobalExceptionHandler {
         });
 
         log.warn("Validation failed: {}", errors);
-        return new ApiResponse<>(400, "参数校验失败", errors, System.currentTimeMillis());
+        return new ApiResponse<>(ResultCode.BAD_REQUEST.getCode(), "参数校验失败", errors, System.currentTimeMillis());
     }
 
     /**
@@ -146,7 +147,7 @@ public class GlobalExceptionHandler {
                 ));
 
         log.warn("Bind exception: {}", errors);
-        return new ApiResponse<>(400, "参数绑定失败", errors, System.currentTimeMillis());
+        return new ApiResponse<>(ResultCode.BAD_REQUEST.getCode(), "参数绑定失败", errors, System.currentTimeMillis());
     }
 
     /**
@@ -156,7 +157,7 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ApiResponse<Void> handleIllegalArgumentException(IllegalArgumentException e) {
         log.warn("Illegal argument: {}", e.getMessage());
-        return ApiResponse.fail(400, "参数错误: " + e.getMessage());
+        return ApiResponse.fail(ResultCode.BAD_REQUEST.getCode(), "参数错误: " + e.getMessage());
     }
 
     /**
@@ -167,7 +168,7 @@ public class GlobalExceptionHandler {
     public ApiResponse<Void> handleNullPointerException(NullPointerException e,
                                                         HttpServletRequest request) {
         log.error("NullPointerException at {}: {}", request.getRequestURI(), e.getMessage(), e);
-        return ApiResponse.fail(500, "系统内部错误，请联系管理员");
+        return ApiResponse.fail(ResultCode.INTERNAL_SERVER_ERROR.getCode(), "系统内部错误，请联系管理员");
     }
 
     /**
@@ -177,6 +178,6 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public ApiResponse<Void> handleException(Exception e, HttpServletRequest request) {
         log.error("Unexpected exception at {}: {}", request.getRequestURI(), e.getMessage(), e);
-        return ApiResponse.fail(500, "系统异常: " + e.getMessage());
+        return ApiResponse.fail(ResultCode.INTERNAL_SERVER_ERROR.getCode(), "系统异常: " + e.getMessage());
     }
 }

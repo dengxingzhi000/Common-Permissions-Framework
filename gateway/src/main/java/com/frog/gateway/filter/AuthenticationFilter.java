@@ -65,7 +65,7 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
         if (deviceId == null) {
             // 如果请求头中没有设备ID，则从JWT中获取
             try {
-                deviceId = (String) jwtUtil.getClaimsFromToken(token).get("deviceId");
+                deviceId = jwtUtil.getDeviceIdFromToken(token);
             } catch (Exception e) {
                 deviceId = "unknown";
             }

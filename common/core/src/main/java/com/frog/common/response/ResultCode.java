@@ -33,6 +33,11 @@ public enum ResultCode {
     USER_PASSWORD_ERROR(1002, "用户名或密码错误"),
     USER_LOCKED(1003, "账户已被锁定"),
     USER_DISABLED(1004, "账户已被禁用"),
+    USER_NOT_ACTIVATED(1005, "用户未激活"),
+    USER_EXIST(1006, "用户已存在"),
+    USER_CANNOT_DELETE_ADMIN(1007, "不能删除管理员用户"),
+    USER_CANNOT_DELETE_SELF(1008, "不能删除自己"),
+
 
     TOKEN_INVALID(1101, "Token无效"),
     TOKEN_EXPIRED(1102, "Token已过期"),

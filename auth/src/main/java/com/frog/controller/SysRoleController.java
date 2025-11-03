@@ -1,6 +1,7 @@
 package com.frog.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.frog.common.domain.PageResult;
 import com.frog.common.log.annotation.AuditLog;
 import com.frog.common.response.ApiResponse;
 import com.frog.domain.dto.RoleDTO;
@@ -31,11 +32,11 @@ public class SysRoleController {
      */
     @GetMapping
     @PreAuthorize("hasAuthority('system:role:list')")
-    public ApiResponse<Page<RoleDTO>> list(@RequestParam(defaultValue = "1") Integer page,
-                                      @RequestParam(defaultValue = "10") Integer size,
-                                      @RequestParam(required = false) String roleName) {
+    public ApiResponse<PageResult<RoleDTO>> list(@RequestParam(defaultValue = "1") Integer page,
+                                                 @RequestParam(defaultValue = "10") Integer size,
+                                                 @RequestParam(required = false) String roleName) {
         Page<RoleDTO> result = roleService.listRoles(page, size, roleName);
-        return ApiResponse.success(result);
+        return ApiResponse.success(PageResult.of(result));
     }
 
     /**

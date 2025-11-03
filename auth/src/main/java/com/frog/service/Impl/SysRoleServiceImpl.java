@@ -144,7 +144,7 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
         }
 
         // 不能修改超级管理员角色
-        if (existRole.getId().equals(1L)) {
+        if (existRole.getId().equals(UUID.fromString("019a0aee-3b74-7bfc-b34f-48b5428d4875"))) {
             throw new BusinessException("不能修改超级管理员角色");
         }
 
@@ -171,7 +171,7 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
         }
 
         // 不能删除超级管理员角色
-        if (role.getId().equals(1L)) {
+        if (role.getId().equals(UUID.fromString("019a0aee-3b74-7bfc-b34f-48b5428d4875"))) {
             throw new BusinessException("不能删除超级管理员角色");
         }
 
