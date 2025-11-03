@@ -12,6 +12,7 @@
         <option value="$PROJECT_DIR$/ai/pom.xml" />
         <option value="$PROJECT_DIR$/app.user.management/pom.xml" />
         <option value="$PROJECT_DIR$/common/cache/pom.xml" />
+        <option value="$PROJECT_DIR$/common/common-api/pom.xml" />
         <option value="$PROJECT_DIR$/common/log/pom.xml" />
         <option value="$PROJECT_DIR$/common/metrics/pom.xml" />
         <option value="$PROJECT_DIR$/common/mybatisPlus/pom.xml" />
