@@ -14,7 +14,6 @@ import java.lang.annotation.*;
 @Documented
 @Inherited
 public @interface BusinessTrace {
-
     /**
      * 操作名称
      */

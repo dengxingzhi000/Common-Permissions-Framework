@@ -23,6 +23,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.util.*;
@@ -268,6 +269,36 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
         return newPassword;
     }
 
+    private String generateRandomPassword() {
+        String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#$%";
+        SecureRandom random = new SecureRandom();
+        StringBuilder password = new StringBuilder();
+
+        // 确保包含大写、小写、数字和特殊字符
+        password.append(chars.charAt(random.nextInt(26))); // 大写
+        password.append(chars.charAt(26 + random.nextInt(26))); // 小写
+        password.append(chars.charAt(52 + random.nextInt(10))); // 数字
+        password.append(chars.charAt(62 + random.nextInt(4))); // 特殊字符
+
+        // 剩余随机字符
+        for (int i = 0; i < 8; i++) {
+            password.append(chars.charAt(random.nextInt(chars.length())));
+        }
+
+        return shufflePassword(password.toString(), random);
+    }
+
+    private String shufflePassword(String password, SecureRandom random) {
+        List<Character> charList = password.chars()
+                .mapToObj(c -> (char) c)
+                .collect(Collectors.toList());
+        Collections.shuffle(charList, random);
+
+        return charList.stream()
+                .map(String::valueOf)
+                .collect(Collectors.joining());
+    }
+
     /**
      * 修改密码
      */
@@ -362,43 +393,163 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
                 SecurityUtils.getCurrentUsername());
     }
 
+    /**
+     * 授予临时角色
+     */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    @CacheEvict(
+            value = {"user", "userDetails", "userInfo", "userRoles", "userPermissions"},
+            key = "#userId"
+    )
+    public void grantTemporaryRoles(UUID userId, List<UUID> roleIds,
+                                    LocalDateTime effectiveTime, LocalDateTime expireTime) {
+        SysUser user = userMapper.selectById(userId);
+        if (user == null) {
+            throw new BusinessException(ResultCode.USER_NOT_FOUND.getCode(), ResultCode.USER_NOT_FOUND.getMessage());
+        }
+
+        // 验证时间
+        if (expireTime != null && expireTime.isBefore(LocalDateTime.now())) {
+            throw new BusinessException("过期时间不能早于当前时间");
+        }
+
+        if (effectiveTime != null && expireTime != null && effectiveTime.isAfter(expireTime)) {
+            throw new BusinessException("生效时间不能晚于过期时间");
+        }
+
+        // 批量插入临时角色
+        if (roleIds != null && !roleIds.isEmpty()) {
+            userMapper.batchInsertTemporaryUserRoles(
+                    userId, roleIds,
+                    effectiveTime != null ? effectiveTime : LocalDateTime.now(),
+                    expireTime,
+                    SecurityUtils.getCurrentUserId()
+            );
+        }
+
+        log.info("Temporary roles granted to user: {}, roles: {}, expireTime: {}, by: {}",
+                user.getUsername(), roleIds, expireTime, SecurityUtils.getCurrentUsername());
+    }
+
+    /**
+     * 延长临时角色的有效期
+     */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    @CacheEvict(
+            value = {"user", "userDetails", "userInfo", "userRoles"},
+            key = "#userId"
+    )
+    public void extendTemporaryRole(UUID userId, UUID roleId, LocalDateTime newExpireTime) {
+        // 验证用户是否有该临时角色
+        if (!userMapper.hasTemporaryRole(userId, roleId)) {
+            throw new BusinessException("用户不存在该临时角色或已过期");
+        }
+
+        // 验证新的过期时间
+        if (newExpireTime.isBefore(LocalDateTime.now())) {
+            throw new BusinessException("新的过期时间不能早于当前时间");
+        }
+
+        int updated = userMapper.extendTemporaryRole(userId, roleId, newExpireTime);
+        if (updated == 0) {
+            throw new BusinessException("延长临时角色失败");
+        }
+
+        log.info("Temporary role extended: userId={}, roleId={}, newExpireTime={}, by={}",
+                userId, roleId, newExpireTime, SecurityUtils.getCurrentUsername());
+    }
+
+    /**
+     * 提前终止临时角色
+     */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    @CacheEvict(
+            value = {"user", "userDetails", "userInfo", "userRoles", "userPermissions"},
+            key = "#userId"
+    )
+    public void terminateTemporaryRole(UUID userId, UUID roleId) {
+        int updated = userMapper.terminateTemporaryRole(userId, roleId);
+        if (updated == 0) {
+            throw new BusinessException("终止临时角色失败，可能该角色不存在或已过期");
+        }
+
+        log.info("Temporary role terminated: userId={}, roleId={}, by={}",
+                userId, roleId, SecurityUtils.getCurrentUsername());
+    }
+
+    /**
+     * 查询用户的临时角色列表
+     */
+    @Override
+    @Cacheable(
+            value = "userTemporaryRoles",
+            key = "#userId"
+    )
+    public List<Map<String, Object>> getUserTemporaryRoles(UUID userId) {
+        return userMapper.findTemporaryRolesByUserId(userId);
+    }
+
+    /**
+     * 检查用户是否有访问某个部门的权限
+     */
+    @Override
+    public boolean canAccessDept(UUID userId, UUID deptId) {
+        return userMapper.hasAccessToDept(userId, deptId);
+    }
+
+    /**
+     * 获取用户的数据权限范围
+     */
+    @Override
+    @Cacheable(
+            value = "userDataScope",
+            key = "#userId"
+    )
+    public Integer getUserDataScope(UUID userId) {
+        Integer dataScope = userMapper.getUserDataScope(userId);
+        return dataScope != null ? dataScope : 5; // 默认仅本人
+    }
+
+    /**
+     * 统计用户信息
+     */
+    @Override
+    public Map<String, Object> getUserStatistics(UUID userId) {
+        Map<String, Object> stats = new HashMap<>();
+
+        // 统计角色数量
+        Integer roleCount = userMapper.countUserRoles(userId);
+        stats.put("roleCount", roleCount);
+
+        // 统计临时角色数量
+        Integer tempRoleCount = userMapper.countTemporaryRoles(userId);
+        stats.put("temporaryRoleCount", tempRoleCount);
+
+        // 统计即将过期的角色数量（7天内）
+        Integer expiringCount = userMapper.countExpiringRoles(userId, 7);
+        stats.put("expiringRoleCount", expiringCount);
+
+        // 获取数据权限范围
+        Integer dataScope = userMapper.getUserDataScope(userId);
+        stats.put("dataScope", dataScope != null ? dataScope : 5); // 默认仅本人
+
+        // 获取最大审批金额
+        BigDecimal maxApprovalAmount = userMapper.getMaxApprovalAmount(userId);
+        stats.put("maxApprovalAmount", maxApprovalAmount);
+
+        return stats;
+    }
+
     // ========== 私有方法 ==========
 
     private UserDTO convertToDTO(SysUser user) {
-        UserDTO dto = new UserDTO();
-        BeanUtils.copyProperties(user, dto);
-        dto.setForceChangePassword(user.getForceChangePassword() == 1);
-        dto.setTwoFactorEnabled(user.getTwoFactorEnabled() == 1);
-        return dto;
-    }
-
-    private String generateRandomPassword() {
-        String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#$%";
-        SecureRandom random = new SecureRandom();
-        StringBuilder password = new StringBuilder();
-
-        // 确保包含大写、小写、数字和特殊字符
-        password.append(chars.charAt(random.nextInt(26))); // 大写
-        password.append(chars.charAt(26 + random.nextInt(26))); // 小写
-        password.append(chars.charAt(52 + random.nextInt(10))); // 数字
-        password.append(chars.charAt(62 + random.nextInt(4))); // 特殊字符
-
-        // 剩余随机字符
-        for (int i = 0; i < 8; i++) {
-            password.append(chars.charAt(random.nextInt(chars.length())));
-        }
-
-        return shufflePassword(password.toString(), random);
-    }
-
-    private String shufflePassword(String password, SecureRandom random) {
-        List<Character> charList = password.chars()
-                .mapToObj(c -> (char) c)
-                .collect(Collectors.toList());
-        Collections.shuffle(charList, random);
-
-        return charList.stream()
-                .map(String::valueOf)
-                .collect(Collectors.joining());
+        UserDTO userDTO = new UserDTO();
+        BeanUtils.copyProperties(user, userDTO);
+        userDTO.setForceChangePassword(user.getForceChangePassword() == 1);
+        userDTO.setTwoFactorEnabled(user.getTwoFactorEnabled() == 1);
+        return userDTO;
     }
 }

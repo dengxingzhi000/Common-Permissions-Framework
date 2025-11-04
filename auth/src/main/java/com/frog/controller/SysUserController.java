@@ -6,17 +6,21 @@ import com.frog.common.domain.PageResult;
 import com.frog.common.response.ApiResponse;
 import com.frog.common.security.util.SecurityUtils;
 import com.frog.domain.dto.ChangePasswordRequest;
+import com.frog.domain.dto.TemporaryRoleGrantDTO;
 import com.frog.domain.dto.UserDTO;
 import com.frog.service.Impl.SysAuthServiceImpl;
 import com.frog.service.ISysUserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -172,5 +176,87 @@ public class SysUserController {
     public ApiResponse<Void> forceLogout(@PathVariable UUID id, @RequestParam String reason) {
         sysAuthServiceImpl.forceLogout(id, reason);
         return ApiResponse.success();
+    }
+
+    /**
+     * 授予临时角色
+     */
+    @PostMapping("/{id}/grant-temporary-roles")
+    @PreAuthorize("hasAuthority('system:user:grant')")
+    @AuditLog(
+            operation = "授予临时角色",
+            businessType = "USER",
+            riskLevel = 4
+    )
+    @Operation(summary = "授予临时角色")
+    public ApiResponse<String> grantTemporaryRoles(
+            @PathVariable UUID id,
+            @RequestBody @Validated TemporaryRoleGrantDTO dto) {
+        userService.grantTemporaryRoles(
+                id,
+                dto.getRoleIds(),
+                dto.getEffectiveTime(),
+                dto.getExpireTime()
+        );
+        return ApiResponse.success("临时角色授予成功");
+    }
+
+    /**
+     * 延长临时角色有效期
+     */
+    @PostMapping("/{userId}/extend-temporary-role/{roleId}")
+    @PreAuthorize("hasAuthority('system:user:grant')")
+    @AuditLog(
+            operation = "延长临时角色",
+            businessType = "USER",
+            riskLevel = 3
+    )
+    @Operation(summary = "延长临时角色有效期")
+    public ApiResponse<String> extendTemporaryRole(
+            @PathVariable UUID userId,
+            @PathVariable UUID roleId,
+            @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime newExpireTime) {
+        userService.extendTemporaryRole(userId, roleId, newExpireTime);
+        return ApiResponse.success("临时角色有效期已延长");
+    }
+
+    /**
+     * 终止临时角色
+     */
+    @PostMapping("/{userId}/terminate-temporary-role/{roleId}")
+    @PreAuthorize("hasAuthority('system:user:grant')")
+    @AuditLog(
+            operation = "终止临时角色",
+            businessType = "USER",
+            riskLevel = 3
+    )
+    @Operation(summary = "终止临时角色")
+    public ApiResponse<String> terminateTemporaryRole(
+            @PathVariable UUID userId,
+            @PathVariable UUID roleId) {
+        userService.terminateTemporaryRole(userId, roleId);
+        return ApiResponse.success("临时角色已终止");
+    }
+
+    /**
+     * 查询用户的临时角色列表
+     */
+    @GetMapping("/{id}/temporary-roles")
+    @PreAuthorize("hasAuthority('system:user:list')")
+    @Operation(summary = "查询用户的临时角色")
+    public ApiResponse<List<Map<String, Object>>> getUserTemporaryRoles(@PathVariable UUID id) {
+        List<Map<String, Object>> roles = userService.getUserTemporaryRoles(id);
+        return ApiResponse.success(roles);
+    }
+
+    /**
+     * 查询用户统计信息
+     */
+    @GetMapping("/{id}/statistics")
+    @PreAuthorize("hasAuthority('system:user:list')")
+    @Operation(summary = "查询用户统计信息")
+    public ApiResponse<Map<String, Object>> getUserStatistics(@PathVariable UUID id) {
+        Map<String, Object> stats = userService.getUserStatistics(id);
+        return ApiResponse.success(stats);
     }
 }

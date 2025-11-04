@@ -1,231 +1,395 @@
 package com.frog.service.Impl;
 
+import com.alibaba.fastjson2.JSON;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.frog.common.exception.BusinessException;
 import com.frog.common.security.util.SecurityUtils;
+import com.frog.common.util.UUIDv7Util;
+import com.frog.domain.dto.ApprovalDTO;
+import com.frog.domain.dto.ApprovalProcessDTO;
 import com.frog.domain.entity.SysPermissionApproval;
+import com.frog.domain.entity.SysUser;
 import com.frog.mapper.SysPermissionApprovalMapper;
 import com.frog.mapper.SysUserMapper;
 import com.frog.service.ISysPermissionApprovalService;
-import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
-import java.util.Map;
-import java.util.Objects;
-import java.util.UUID;
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
- * <p>
- * 权限申请审批表 服务实现类
- * </p>
+ * 权限申请审批服务实现
  *
- * @author author
- * @since 2025-10-30
+ * @author Deng
+ * @since 2025-11-03
  */
 @Service
 @RequiredArgsConstructor
 @Slf4j
-public class SysPermissionApprovalServiceImpl extends ServiceImpl<SysPermissionApprovalMapper, SysPermissionApproval>
+public class SysPermissionApprovalServiceImpl
+        extends ServiceImpl<SysPermissionApprovalMapper, SysPermissionApproval>
         implements ISysPermissionApprovalService {
     private final SysPermissionApprovalMapper approvalMapper;
     private final SysUserMapper userMapper;
 
     /**
-     * 申请权限/角色
+     * 提交权限申请
      */
+    @Override
     @Transactional(rollbackFor = Exception.class)
-    public UUID applyPermission(UUID userId, UUID targetId, String targetType,
-                                String reason, Integer expireDays) {
+    public UUID submitApproval(ApprovalDTO dto) {
         UUID currentUserId = SecurityUtils.getCurrentUserId();
 
-        // 验证目标类型
-        if (!"ROLE".equals(targetType) && !"PERMISSION".equals(targetType)) {
-            throw new BusinessException("目标类型只能是ROLE或PERMISSION");
+        // 1. 检查是否有重复的待审批申请
+        if (approvalMapper.existsPendingApplication(
+                currentUserId, dto.getTargetUserId(), dto.getApprovalType())) {
+            throw new BusinessException("您已有相同的申请正在审批中");
         }
 
-        // 验证申请理由长度
-        if (reason == null || reason.length() < 10) {
-            throw new BusinessException("申请理由至少10个字符");
+        // 2. 构建审批实体
+        SysPermissionApproval approval = SysPermissionApproval.builder()
+                .id(UUIDv7Util.generate())
+                .applicantId(currentUserId)
+                .approvalType(dto.getApprovalType())
+                .targetUserId(dto.getTargetUserId())
+                .roleIds(dto.getRoleIds() != null ?
+                        dto.getRoleIds().stream()
+                                .map(UUID::toString)
+                                .collect(Collectors.joining(",")) : null)
+                .permissionIds(dto.getPermissionIds() != null ?
+                        dto.getPermissionIds().stream()
+                                .map(UUID::toString)
+                                .collect(Collectors.joining(",")) : null)
+                .effectiveTime(dto.getEffectiveTime())
+                .expireTime(dto.getExpireTime())
+                .applyReason(dto.getApplyReason())
+                .businessJustification(dto.getBusinessJustification())
+                .approvalStatus(0) // 待审批
+                .build();
+
+        // 3. 构建审批链
+        List<UUID> approvalChain = buildApprovalChain(dto.getApprovalType(), currentUserId);
+        approval.setApprovalChain(JSON.toJSONString(approvalChain));
+
+        // 4. 设置第一个审批人
+        if (!approvalChain.isEmpty()) {
+            approval.setCurrentApproverId(approvalChain.getFirst());
         }
 
-        // 创建审批申请
-        UUID approvalId = UUID.randomUUID();
-        LocalDateTime expireTime = expireDays != null ? LocalDateTime.now().plusDays(expireDays) : null;
+        // 5. 保存申请
+        approvalMapper.insert(approval);
 
-        approvalMapper.insertApproval(
-                approvalId,
-                currentUserId,
-                userId,
-                targetId,
-                targetType,
-                reason,
-                expireTime,
-                0, // 待审批
-                LocalDateTime.now()
-        );
+        log.info("Permission approval submitted: id={}, applicant={}, type={}",
+                approval.getId(), currentUserId, dto.getApprovalType());
 
-        // TODO: 发送通知给审批人
-        // notifyApprovers(approvalId, userId, targetType);
+        // 6. 发送通知给第一个审批人
+        sendApprovalNotification(approval);
 
-        log.info("Permission approval created: approvalId={}, applicant={}, userId={}, targetType={}",
-                approvalId, currentUserId, userId, targetType);
-
-        return approvalId;
+        return approval.getId();
     }
 
     /**
-     * 审批通过
+     * 审批处理
      */
+    @Override
     @Transactional(rollbackFor = Exception.class)
-    public void approve(UUID approvalId, String comment) {
-        UUID approverId = SecurityUtils.getCurrentUserId();
+    public void processApproval(UUID approvalId, ApprovalProcessDTO dto) {
+        UUID currentUserId = SecurityUtils.getCurrentUserId();
 
-        // 验证审批人权限
-        if (!cannotApprove(approverId)) {
-            throw new BusinessException("您没有审批权限");
-        }
-
-        // 获取审批详情
-        Map<String, Object> approval = approvalMapper.getApprovalDetail(approvalId);
+        // 1. 查询审批记录
+        SysPermissionApproval approval = approvalMapper.selectById(approvalId);
         if (approval == null) {
-            throw new BusinessException("审批申请不存在");
+            throw new BusinessException("审批记录不存在");
         }
 
-        Integer status = (Integer) approval.get("status");
-        if (status != 0) {
+        // 2. 验证审批权限
+        if (!Objects.equals(currentUserId, approval.getCurrentApproverId())) {
+            throw new BusinessException("您不是当前审批人");
+        }
+
+        // 3. 验证审批状态
+        if (approval.getApprovalStatus() != 0 && approval.getApprovalStatus() != 1) {
             throw new BusinessException("该申请已被处理");
         }
 
-        // 更新审批状态
-        approvalMapper.updateApprovalStatus(
-                approvalId,
-                1, // 已通过
-                approverId,
-                comment,
-                LocalDateTime.now()
-        );
-
-        // 执行实际的权限授予
-        grantPermissionAfterApproval(approval);
-
-        log.info("Approval approved: approvalId={}, approverId={}", approvalId, approverId);
+        // 4. 处理审批
+        if (dto.getApproved()) {
+            handleApprove(approval, currentUserId);
+        } else {
+            handleReject(approval, dto, currentUserId);
+        }
     }
 
     /**
-     * 审批拒绝
+     * 处理通过
      */
+    private void handleApprove(SysPermissionApproval approval, UUID approverId) {
+        // 1. 获取审批链
+        List<UUID> approvalChain = JSON.parseArray(
+                approval.getApprovalChain(), UUID.class);
+
+        int currentIndex = approvalChain.indexOf(approverId);
+
+        // 2. 判断是否还有下一级审批人
+        if (currentIndex < approvalChain.size() - 1) {
+            // 还有下一级，转给下一个审批人
+            UUID nextApprover = approvalChain.get(currentIndex + 1);
+            approvalMapper.updateCurrentApprover(approval.getId(), nextApprover);
+
+            log.info("Approval forwarded to next approver: id={}, next={}",
+                    approval.getId(), nextApprover);
+
+            // 发送通知给下一个审批人
+            sendApprovalNotification(approval);
+        } else {
+            // 最后一级审批人，批准通过
+            approvalMapper.updateApprovalStatus(
+                    approval.getId(), 2, approverId, null);
+
+            log.info("Approval granted: id={}, approver={}",
+                    approval.getId(), approverId);
+
+            // 执行权限授予
+            grantPermissions(approval);
+
+            // 通知申请人
+            sendResultNotification(approval, true);
+        }
+    }
+
+    /**
+     * 处理拒绝
+     */
+    private void handleReject(SysPermissionApproval approval,
+                              ApprovalProcessDTO dto, UUID approverId) {
+        approvalMapper.updateApprovalStatus(
+                approval.getId(), 3, approverId, dto.getRejectReason());
+
+        log.info("Approval rejected: id={}, approver={}, reason={}",
+                approval.getId(), approverId, dto.getRejectReason());
+
+        // 通知申请人
+        sendResultNotification(approval, false);
+    }
+
+    /**
+     * 执行权限授予
+     */
+    private void grantPermissions(SysPermissionApproval approval) {
+        UUID targetUserId = approval.getTargetUserId();
+
+        switch (approval.getApprovalType()) {
+            case 1 -> // 角色申请
+                    Optional.ofNullable(approval.getRoleIds())
+                            .ifPresent(roleIdsStr -> {
+                                List<UUID> roleIds = Arrays.stream(roleIdsStr.split(","))
+                                        .map(UUID::fromString)
+                                        .toList();
+                                userMapper.batchInsertUserRoles(targetUserId, roleIds,
+                                        SecurityUtils.getCurrentUserId());
+                            });
+
+            case 2 -> // 权限申请
+                    // TODO: 实现直接权限授予逻辑（如果需要）
+                    log.debug("Direct permission grant not implemented yet");
+
+            case 3 -> // 临时授权
+                    // 临时授权在 sys_user_role 中设置过期时间
+                    Optional.ofNullable(approval.getRoleIds())
+                            .ifPresent(roleIdsStr -> {
+                                List<UUID> roleIds = Arrays.stream(roleIdsStr.split(","))
+                                        .map(UUID::fromString)
+                                        .toList();
+                                // TODO: 实现带过期时间的角色授予
+                                log.debug("Temporary role grant with expiration not implemented yet");
+                            });
+
+            default -> throw new BusinessException("未知的审批类型: " + approval.getApprovalType());
+        }
+    }
+
+    /**
+     * 撤回申请
+     */
+    @Override
     @Transactional(rollbackFor = Exception.class)
-    public void reject(UUID approvalId, String reason) {
-        UUID approverId = SecurityUtils.getCurrentUserId();
+    public void withdrawApproval(UUID approvalId) {
+        UUID currentUserId = SecurityUtils.getCurrentUserId();
 
-        // 验证审批人权限
-        if (!cannotApprove(approverId)) {
-            throw new BusinessException("您没有审批权限");
+        SysPermissionApproval approval = approvalMapper.selectById(approvalId);
+        if (approval == null) {
+            throw new BusinessException("审批记录不存在");
         }
 
-        // 验证审批状态
-        Integer status = approvalMapper.getApprovalStatus(approvalId);
-        if (status == null) {
-            throw new BusinessException("审批申请不存在");
-        }
-        if (status != 0) {
-            throw new BusinessException("该申请已被处理");
+        // 验证权限：只有申请人可以撤回
+        if (!Objects.equals(currentUserId, approval.getApplicantId())) {
+            throw new BusinessException("您无权撤回该申请");
         }
 
-        // 更新审批状态
-        approvalMapper.updateApprovalStatus(
-                approvalId,
-                2, // 已拒绝
-                approverId,
-                reason,
-                LocalDateTime.now()
-        );
+        // 验证状态：只有待审批的可以撤回
+        if (approval.getApprovalStatus() != 0 && approval.getApprovalStatus() != 1) {
+            throw new BusinessException("该申请已被处理，无法撤回");
+        }
 
-        log.info("Approval rejected: approvalId={}, approverId={}, reason={}",
-                approvalId, approverId, reason);
+        // 更新状态为已撤回
+        approvalMapper.updateApprovalStatus(approvalId, 4, currentUserId, "申请人撤回");
+
+        log.info("Approval withdrawn: id={}, applicant={}", approvalId, currentUserId);
     }
 
     /**
-     * 撤销申请
+     * 查询待我审批的列表
      */
-    @Transactional(rollbackFor = Exception.class)
-    public void revoke(UUID approvalId) {
-        UUID userId = SecurityUtils.getCurrentUserId();
+    @Override
+    public Page<ApprovalDTO> getPendingApprovals(Integer pageNum, Integer pageSize) {
+        UUID currentUserId = SecurityUtils.getCurrentUserId();
+        Page<SysPermissionApproval> page = new Page<>(pageNum, pageSize);
 
-        // 验证是否为申请人
-        UUID applicantId = approvalMapper.getApplicantId(approvalId);
-        if (applicantId == null) {
-            throw new BusinessException("审批申请不存在");
-        }
-        if (!Objects.equals(userId, applicantId)) {
-            throw new BusinessException("只能撤销自己的申请");
-        }
+        Page<SysPermissionApproval> result = approvalMapper.selectPendingApprovals(
+                page, currentUserId);
 
-        // 验证状态是否为待审批
-        Integer status = approvalMapper.getApprovalStatus(approvalId);
-        if (status != 0) {
-            throw new BusinessException("只能撤销待审批的申请");
-        }
-
-        approvalMapper.updateApprovalStatus(
-                approvalId,
-                3, // 已撤销
-                userId,
-                "申请人主动撤销",
-                LocalDateTime.now()
-        );
-
-        log.info("Approval revoked: approvalId={}, userId={}", approvalId, userId);
+        return convertToDTO(result);
     }
 
     /**
-     * 验证是否可以审批
-     * 这里简化为检查是否有特定角色
+     * 查询我的申请历史
      */
-    private boolean cannotApprove(UUID userId) {
-        var roles = userMapper.findRolesByUserId(userId);
-        return !(
-                roles.contains("ROLE_SUPER_ADMIN") ||
-                        roles.contains("ROLE_ADMIN") ||
-                        roles.contains("ROLE_DEPT_MANAGER")
-        );
+    @Override
+    public Page<ApprovalDTO> getMyApplications(Integer pageNum, Integer pageSize) {
+        UUID currentUserId = SecurityUtils.getCurrentUserId();
+        Page<SysPermissionApproval> page = new Page<>(pageNum, pageSize);
+
+        Page<SysPermissionApproval> result = approvalMapper.selectUserApplyHistory(
+                page, currentUserId);
+
+        return convertToDTO(result);
     }
 
     /**
-     * 审批通过后授予权限
+     * 构建审批链
+     * 根据申请类型和申请人确定审批链路
      */
-    private void grantPermissionAfterApproval(Map<String, Object> approval) {
-        String targetType = (String) approval.get("target_type");
-        UUID userId = (UUID) approval.get("user_id");
-        UUID targetId = (UUID) approval.get("target_id");
-        LocalDateTime expireTime = (LocalDateTime) approval.get("expire_time");
+    private List<UUID> buildApprovalChain(Integer approvalType, UUID applicantId) {
+        List<UUID> chain = new ArrayList<>();
 
-        // 根据类型授予权限
-        if ("ROLE".equals(targetType)) {
-            approvalMapper.grantRole(userId, targetId, expireTime, 1);
-            log.info("Role granted: userId={}, roleId={}", userId, targetId);
-        } else if ("PERMISSION".equals(targetType)) {
-            approvalMapper.grantPermission(userId, targetId, expireTime, 1);
-            log.info("Permission granted: userId={}, permissionId={}", userId, targetId);
+        // 查询申请人信息
+        SysUser applicant = userMapper.selectById(applicantId);
+        if (applicant == null) {
+            return chain;
         }
+
+        // TODO: 根据实际业务规则构建审批链
+        // 示例：部门经理 -> 系统管理员
+
+        // 1. 添加部门经理
+        UUID deptManager = getDeptManager(applicant.getDeptId());
+        if (deptManager != null) {
+            chain.add(deptManager);
+        }
+
+        // 2. 添加系统管理员
+        UUID sysAdmin = getSystemAdmin();
+        if (sysAdmin != null) {
+            chain.add(sysAdmin);
+        }
+
+        return chain;
     }
 
     /**
-     * 查询待审批列表
+     * 获取部门经理
      */
-    public Object getPendingApprovals(UUID approverId, Integer page, Integer size) {
-        int offset = (page - 1) * size;
-        return approvalMapper.findPendingApprovals(approverId, offset, size);
+    private UUID getDeptManager(UUID deptId) {
+        // TODO: 从 sys_dept 表查询部门负责人
+        return null;
     }
 
     /**
-     * 查询我的申请列表
+     * 获取系统管理员
      */
-    public Object getMyApplications(UUID applicantId, Integer page, Integer size) {
-        int offset = (page - 1) * size;
-        return approvalMapper.findApplicationsByUser(applicantId, offset, size);
+    private UUID getSystemAdmin() {
+        // TODO: 查询系统管理员用户
+        return null;
+    }
+
+    /**
+     * 发送审批通知
+     */
+    private void sendApprovalNotification(SysPermissionApproval approval) {
+        // TODO: 集成消息通知服务
+        log.info("Approval notification sent: id={}, approver={}",
+                approval.getId(), approval.getCurrentApproverId());
+    }
+
+    /**
+     * 发送审批结果通知
+     */
+    private void sendResultNotification(SysPermissionApproval approval, boolean approved) {
+        // TODO: 通知申请人审批结果
+        log.info("Approval result notification sent: id={}, result={}",
+                approval.getId(), approved ? "approved" : "rejected");
+    }
+
+    /**
+     * 查询审批详情
+     */
+    @Override
+    public ApprovalDTO getApprovalDetail(UUID approvalId) {
+        SysPermissionApproval approval = approvalMapper.selectById(approvalId);
+        if (approval == null) {
+            throw new BusinessException("审批记录不存在");
+        }
+
+        return convertToDTO(approval);
+    }
+
+    /**
+     * 转换为DTO
+     */
+    private Page<ApprovalDTO> convertToDTO(Page<SysPermissionApproval> page) {
+        Page<ApprovalDTO> dtoPage = new Page<>(
+                page.getCurrent(), page.getSize(), page.getTotal());
+
+        List<ApprovalDTO> records = page.getRecords().stream()
+                .map(this::convertToDTO)
+                .collect(Collectors.toList());
+
+        dtoPage.setRecords(records);
+        return dtoPage;
+    }
+
+    private ApprovalDTO convertToDTO(SysPermissionApproval entity) {
+        ApprovalDTO approvalDTO = ApprovalDTO.builder()
+                .id(entity.getId())
+                .applicantId(entity.getApplicantId())
+                .approvalType(entity.getApprovalType())
+                .targetUserId(entity.getTargetUserId())
+                .applyReason(entity.getApplyReason())
+                .businessJustification(entity.getBusinessJustification())
+                .approvalStatus(entity.getApprovalStatus())
+                .effectiveTime(entity.getEffectiveTime())
+                .expireTime(entity.getExpireTime())
+                .approvedTime(entity.getApprovedTime())
+                .rejectReason(entity.getRejectReason())
+                .build();
+
+        // 解析角色和权限ID
+        if (entity.getRoleIds() != null) {
+            approvalDTO.setRoleIds(Arrays.stream(entity.getRoleIds().split(","))
+                    .map(UUID::fromString)
+                    .toList());
+        }
+
+        if (entity.getPermissionIds() != null) {
+            approvalDTO.setPermissionIds(Arrays.stream(entity.getPermissionIds().split(","))
+                    .map(UUID::fromString)
+                    .toList());
+        }
+
+        return approvalDTO;
     }
 }

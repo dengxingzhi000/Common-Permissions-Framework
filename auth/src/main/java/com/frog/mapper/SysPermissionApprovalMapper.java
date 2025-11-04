@@ -1,12 +1,11 @@
 package com.frog.mapper;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.frog.domain.entity.SysPermissionApproval;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import org.apache.ibatis.annotations.*;
 
-import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -20,155 +19,192 @@ import java.util.UUID;
 @Mapper
 public interface SysPermissionApprovalMapper extends BaseMapper<SysPermissionApproval> {
     /**
-     * 插入审批申请
+     * 分页查询审批列表
      */
-    @Insert("""
-        INSERT INTO sys_approval (
-            id, applicant_id, user_id, target_id, target_type,
-            apply_reason, expire_time, status, create_time
-        ) VALUES (
-            #{id}, #{applicantId}, #{userId}, #{targetId}, #{targetType},
-            #{reason}, #{expireTime}, #{status}, #{createTime}
-        )
-    """)
-    void insertApproval(
-            @Param("id") UUID id,
+    @Select("""
+            <script>
+            SELECT * FROM sys_permission_approval
+            WHERE 1=1
+            <if test='applicantId != null'>
+                AND applicant_id = #{applicantId}
+            </if>
+            <if test='approvalStatus != null'>
+                AND approval_status = #{approvalStatus}
+            </if>
+            <if test='approvalType != null'>
+                AND approval_type = #{approvalType}
+            </if>
+            ORDER BY create_time DESC
+            </script>
+            """)
+    Page<SysPermissionApproval> selectApprovalPage(
+            Page<SysPermissionApproval> page,
             @Param("applicantId") UUID applicantId,
+            @Param("approvalStatus") Integer approvalStatus,
+            @Param("approvalType") Integer approvalType
+    );
+
+    /**
+     * 查询待我审批的申请列表
+     */
+    @Select("""
+            SELECT * FROM sys_permission_approval
+            WHERE current_approver_id = #{approverId}
+            AND approval_status IN (0, 1)
+            ORDER BY create_time ASC
+            """)
+    Page<SysPermissionApproval> selectPendingApprovals(
+            Page<SysPermissionApproval> page,
+            @Param("approverId") UUID approverId
+    );
+
+    /**
+     * 查询我处理过的审批
+     */
+    @Select("""
+            SELECT * FROM sys_permission_approval
+            WHERE approved_by = #{approverId}
+            AND approval_status IN (2, 3)
+            ORDER BY approved_time DESC
+            """)
+    Page<SysPermissionApproval> selectProcessedApprovals(
+            Page<SysPermissionApproval> page,
+            @Param("approverId") UUID approverId
+    );
+
+    /**
+     * 查询用户的申请历史
+     */
+    @Select("""
+            SELECT * FROM sys_permission_approval
+            WHERE applicant_id = #{userId}
+            ORDER BY create_time DESC
+            """)
+    Page<SysPermissionApproval> selectUserApplyHistory(
+            Page<SysPermissionApproval> page,
+            @Param("userId") UUID userId
+    );
+
+    /**
+     * 查询即将过期的临时权限（用于提醒）
+     */
+    @Select("""
+            SELECT * FROM sys_permission_approval
+            WHERE approval_type = 3
+            AND approval_status = 2
+            AND expire_time IS NOT NULL
+            AND expire_time BETWEEN NOW() AND DATE_ADD(NOW(), INTERVAL #{days} DAY)
+            ORDER BY expire_time ASC
+            """)
+    List<SysPermissionApproval> selectExpiringApprovals(@Param("days") Integer days);
+
+    /**
+     * 查询已过期的临时权限
+     */
+    @Select("""
+            SELECT * FROM sys_permission_approval
+            WHERE approval_type = 3
+            AND approval_status = 2
+            AND expire_time < NOW()
+            """)
+    List<SysPermissionApproval> selectExpiredApprovals();
+
+    /**
+     * 统计用户待审批数量
+     */
+    @Select("""
+            SELECT COUNT(*) FROM sys_permission_approval
+            WHERE current_approver_id = #{approverId}
+            AND approval_status IN (0, 1)
+            """)
+    Integer countPendingApprovals(@Param("approverId") UUID approverId);
+
+    /**
+     * 统计用户的申请数量（按状态）
+     */
+    @Select("""
+            SELECT COUNT(*) FROM sys_permission_approval
+            WHERE applicant_id = #{userId}
+            AND approval_status = #{status}
+            """)
+    Integer countUserApplications(
             @Param("userId") UUID userId,
-            @Param("targetId") UUID targetId,
-            @Param("targetType") String targetType,
-            @Param("reason") String reason,
-            @Param("expireTime") LocalDateTime expireTime,
-            @Param("status") Integer status,
-            @Param("createTime") LocalDateTime createTime
+            @Param("status") Integer status
     );
 
     /**
      * 更新审批状态
      */
     @Update("""
-        UPDATE sys_approval SET
-            status = #{status},
-            approver_id = #{approverId},
-            approve_comment = #{comment},
-            approve_time = #{approveTime}
-        WHERE id = #{id}
-    """)
-    void updateApprovalStatus(
+            UPDATE sys_permission_approval
+            SET approval_status = #{status},
+                approved_by = #{approverId},
+                approved_time = NOW(),
+                reject_reason = #{rejectReason},
+                update_time = NOW()
+            WHERE id = #{id}
+            """)
+    int updateApprovalStatus(
             @Param("id") UUID id,
             @Param("status") Integer status,
             @Param("approverId") UUID approverId,
-            @Param("comment") String comment,
-            @Param("approveTime") LocalDateTime approveTime
+            @Param("rejectReason") String rejectReason
     );
 
     /**
-     * 获取申请人ID
+     * 更新当前审批人
      */
-    @Select("SELECT applicant_id FROM sys_approval WHERE id = #{id}")
-    UUID getApplicantId(@Param("id") UUID id);
+    @Update("""
+            UPDATE sys_permission_approval
+            SET current_approver_id = #{approverId},
+                approval_status = 1,
+                update_time = NOW()
+            WHERE id = #{id}
+            """)
+    int updateCurrentApprover(
+            @Param("id") UUID id,
+            @Param("approverId") UUID approverId
+    );
 
     /**
-     * 获取审批状态
+     * 更新审批链
      */
-    @Select("SELECT status FROM sys_approval WHERE id = #{id}")
-    Integer getApprovalStatus(@Param("id") UUID id);
+    @Update("""
+            UPDATE sys_permission_approval
+            SET approval_chain = #{approvalChain},
+                update_time = NOW()
+            WHERE id = #{id}
+            """)
+    int updateApprovalChain(
+            @Param("id") UUID id,
+            @Param("approvalChain") String approvalChain
+    );
 
     /**
-     * 获取审批详情
+     * 检查用户是否有相同的待审批申请
      */
     @Select("""
-        SELECT * FROM sys_approval WHERE id = #{id}
-    """)
-    Map<String, Object> getApprovalDetail(@Param("id") UUID id);
-
-    /**
-     * 授予角色
-     */
-    @Insert("""
-        INSERT INTO sys_user_role (
-            user_id, role_id, expire_time, approval_status, create_time
-        ) VALUES (
-            #{userId}, #{roleId}, #{expireTime}, #{approvalStatus}, NOW()
-        )
-    """)
-    void grantRole(
-            @Param("userId") UUID userId,
-            @Param("roleId") UUID roleId,
-            @Param("expireTime") LocalDateTime expireTime,
-            @Param("approvalStatus") Integer approvalStatus
-    );
-
-    /**
-     * 授予权限
-     */
-    @Insert("""
-        INSERT INTO sys_user_permission (
-            user_id, permission_id, expire_time, approval_status, create_time
-        ) VALUES (
-            #{userId}, #{permissionId}, #{expireTime}, #{approvalStatus}, NOW()
-        )
-    """)
-    void grantPermission(
-            @Param("userId") UUID userId,
-            @Param("permissionId") UUID permissionId,
-            @Param("expireTime") LocalDateTime expireTime,
-            @Param("approvalStatus") Integer approvalStatus
-    );
-
-    /**
-     * 查询待审批列表
-     */
-    @Select("""
-        <script>
-        SELECT a.*, 
-               u1.username as applicant_name,
-               u2.username as user_name,
-               CASE 
-                   WHEN a.target_type = 'ROLE' THEN r.role_name
-                   WHEN a.target_type = 'PERMISSION' THEN p.permission_name
-               END as target_name
-        FROM sys_approval a
-        LEFT JOIN sys_user u1 ON a.applicant_id = u1.id
-        LEFT JOIN sys_user u2 ON a.user_id = u2.id
-        LEFT JOIN sys_role r ON a.target_type = 'ROLE' AND a.target_id = r.id
-        LEFT JOIN sys_permission p ON a.target_type = 'PERMISSION' AND a.target_id = p.id
-        WHERE a.status = 0
-        ORDER BY a.create_time DESC
-        LIMIT #{size} OFFSET #{offset}
-        </script>
-    """)
-    List<Map<String, Object>> findPendingApprovals(
-            @Param("approverId") UUID approverId,
-            @Param("page") Integer page,
-            @Param("size") Integer size
-    );
-
-    /**
-     * 查询用户的申请列表
-     */
-    @Select("""
-        <script>
-        SELECT a.*,
-               u.username as user_name,
-               CASE 
-                   WHEN a.target_type = 'ROLE' THEN r.role_name
-                   WHEN a.target_type = 'PERMISSION' THEN p.permission_name
-               END as target_name,
-               approver.username as approver_name
-        FROM sys_approval a
-        LEFT JOIN sys_user u ON a.user_id = u.id
-        LEFT JOIN sys_role r ON a.target_type = 'ROLE' AND a.target_id = r.id
-        LEFT JOIN sys_permission p ON a.target_type = 'PERMISSION' AND a.target_id = p.id
-        LEFT JOIN sys_user approver ON a.approver_id = approver.id
-        WHERE a.applicant_id = #{applicantId}
-        ORDER BY a.create_time DESC
-        LIMIT #{size} OFFSET #{offset}
-        </script>
-    """)
-    List<Map<String, Object>> findApplicationsByUser(
+            SELECT COUNT(*) > 0 FROM sys_permission_approval
+            WHERE applicant_id = #{applicantId}
+            AND target_user_id = #{targetUserId}
+            AND approval_type = #{approvalType}
+            AND approval_status IN (0, 1)
+            """)
+    boolean existsPendingApplication(
             @Param("applicantId") UUID applicantId,
-            @Param("page") Integer page,
-            @Param("size") Integer size
+            @Param("targetUserId") UUID targetUserId,
+            @Param("approvalType") Integer approvalType
     );
+
+    /**
+     * 批量更新过期的临时权限状态
+     */
+    @Update("""
+            UPDATE sys_permission_approval
+            SET approval_status = 5
+            WHERE approval_type = 3
+            AND approval_status = 2
+            AND expire_time < NOW()
+            """)
+    int updateExpiredApprovals();
 }

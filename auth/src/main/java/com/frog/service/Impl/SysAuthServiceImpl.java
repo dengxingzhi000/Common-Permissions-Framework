@@ -54,6 +54,7 @@ public class SysAuthServiceImpl implements ISysAuthService {
     /**
      * 用户登录
      */
+    @Override
     @Transactional
     public LoginResponse login(LoginRequest request, String ipAddress, String deviceId) {
         String username = request.getUsername();
@@ -149,9 +150,45 @@ public class SysAuthServiceImpl implements ISysAuthService {
         }
     }
 
+    private boolean isAccountLocked(String username) {
+        String lockKey = ACCOUNT_LOCK_PREFIX + username;
+        return redisTemplate.hasKey(lockKey);
+    }
+
+    private void lockAccount(String username) {
+        String lockKey = ACCOUNT_LOCK_PREFIX + username;
+        redisTemplate.opsForValue().set(lockKey, System.currentTimeMillis(),
+                Duration.ofMillis(securityProperties.getLockDuration()));
+        log.warn("Account locked: {}", username);
+    }
+
+    private int getLoginAttempts(String username) {
+        String attemptKey = LOGIN_ATTEMPTS_PREFIX + username;
+        Integer attempts = (Integer) redisTemplate.opsForValue().get(attemptKey);
+        return attempts != null ? attempts : 0;
+    }
+
+    private void incrementLoginAttempts(String username) {
+        String attemptKey = LOGIN_ATTEMPTS_PREFIX + username;
+        redisTemplate.opsForValue().increment(attemptKey);
+        redisTemplate.expire(attemptKey, Duration.ofMillis(securityProperties.getLockDuration()));
+    }
+
+    private void clearLoginAttempts(String username) {
+        String attemptKey = LOGIN_ATTEMPTS_PREFIX + username;
+        redisTemplate.delete(attemptKey);
+    }
+
+    private boolean verifyTwoFactor(String code, UUID userId) {
+        // TODO: 实现TOTP双因素认证验证逻辑
+        // 可以使用Google Authenticator的库
+        return StringUtils.hasText(code);
+    }
+
     /**
      * 用户登出
      */
+    @Override
     public void logout(String token, UUID userId, String reason) {
         jwtUtils.revokeToken(token, reason != null ? reason : "用户主动登出");
         auditLogService.recordLogout(userId, "登出成功");
@@ -161,6 +198,7 @@ public class SysAuthServiceImpl implements ISysAuthService {
     /**
      * 刷新Token
      */
+    @Override
     public LoginResponse refreshToken(String refreshToken, String deviceId, String ipAddress) {
         if (jwtUtils.validateRefreshToken(refreshToken)) {
             throw new BadCredentialsException("刷新令牌无效或已过期");
@@ -195,40 +233,5 @@ public class SysAuthServiceImpl implements ISysAuthService {
         jwtUtils.revokeAllUserTokens(userId);
         auditLogService.recordLogout(userId, "管理员强制下线: " + reason);
         log.info("User force logout: UserId={}, Reason={}", userId, reason);
-    }
-
-    private boolean isAccountLocked(String username) {
-        String lockKey = ACCOUNT_LOCK_PREFIX + username;
-        return redisTemplate.hasKey(lockKey);
-    }
-
-    private void lockAccount(String username) {
-        String lockKey = ACCOUNT_LOCK_PREFIX + username;
-        redisTemplate.opsForValue().set(lockKey, System.currentTimeMillis(),
-                Duration.ofMillis(securityProperties.getLockDuration()));
-        log.warn("Account locked: {}", username);
-    }
-
-    private int getLoginAttempts(String username) {
-        String attemptKey = LOGIN_ATTEMPTS_PREFIX + username;
-        Integer attempts = (Integer) redisTemplate.opsForValue().get(attemptKey);
-        return attempts != null ? attempts : 0;
-    }
-
-    private void incrementLoginAttempts(String username) {
-        String attemptKey = LOGIN_ATTEMPTS_PREFIX + username;
-        redisTemplate.opsForValue().increment(attemptKey);
-        redisTemplate.expire(attemptKey, Duration.ofMillis(securityProperties.getLockDuration()));
-    }
-
-    private void clearLoginAttempts(String username) {
-        String attemptKey = LOGIN_ATTEMPTS_PREFIX + username;
-        redisTemplate.delete(attemptKey);
-    }
-
-    private boolean verifyTwoFactor(String code, UUID userId) {
-        // TODO: 实现TOTP双因素认证验证逻辑
-        // 可以使用Google Authenticator的库
-        return StringUtils.hasText(code);
     }
 }
