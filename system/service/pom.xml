@@ -20,15 +20,15 @@
     </properties>
 
     <dependencies>
-        <!-- mysql -->
         <dependency>
-            <groupId>com.mysql</groupId>
-            <artifactId>mysql-connector-j</artifactId>
+            <groupId>com.frog.common</groupId>
+            <artifactId>data</artifactId>
+            <version>1.0-SNAPSHOT</version>
         </dependency>
-        <!-- mybatis plus -->
         <dependency>
-            <groupId>com.baomidou</groupId>
-            <artifactId>mybatis-plus-spring-boot3-starter</artifactId>
+            <groupId>com.frog.common</groupId>
+            <artifactId>core</artifactId>
+            <version>1.0-SNAPSHOT</version>
         </dependency>
     </dependencies>
 </project>

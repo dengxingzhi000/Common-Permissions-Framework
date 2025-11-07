@@ -1,9 +1,11 @@
 package com.frog.common.security.filter;
 
+import com.frog.common.mybatisPlus.domain.UserContext;
 import com.frog.common.security.domain.SecurityUser;
 import com.frog.common.security.util.HttpServletRequestUtils;
 import com.frog.common.security.util.IpUtils;
 import com.frog.common.security.util.JwtUtils;
+import com.frog.common.mybatisPlus.util.UserContextUtil;
 import jakarta.annotation.Nonnull;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -76,6 +78,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                             .roles(roles)
                             .build();
 
+                    UserContext context = UserContext.builder()
+                            .userId(userId)
+                            .username(username)
+                            .roles(jwtUtils.getRolesFromToken(token))
+                            .permissions(jwtUtils.getPermissionsFromToken(token))
+                            .build();
+
                     UsernamePasswordAuthenticationToken authentication =
                             new UsernamePasswordAuthenticationToken(
                                     userDetails, null, authorities);
@@ -84,6 +93,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
                     // 设置到Security上下文
                     SecurityContextHolder.getContext().setAuthentication(authentication);
+                    UserContextUtil.setContext(context);
 
                     log.debug("User authenticated: {}", username);
                 }

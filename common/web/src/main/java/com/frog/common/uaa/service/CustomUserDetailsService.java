@@ -2,7 +2,7 @@ package com.frog.common.uaa.service;
 
 import com.frog.common.response.ApiResponse;
 import com.frog.common.security.domain.SecurityUser;
-import com.frog.common.security.feign.client.SysUserServiceClient;
+import com.frog.common.feign.client.SysUserServiceClient;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;

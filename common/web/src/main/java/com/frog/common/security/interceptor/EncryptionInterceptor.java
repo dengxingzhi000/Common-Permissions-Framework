@@ -42,7 +42,6 @@ import java.util.Properties;
 @RequiredArgsConstructor
 @Slf4j
 public class EncryptionInterceptor implements Interceptor {
-
     private final AESEncryptor aesEncryptor;
 
     @Override
@@ -67,7 +66,7 @@ public class EncryptionInterceptor implements Interceptor {
         }
 
         // 查询时解密
-        if (target instanceof ResultSetHandler) {
+        if (target instanceof ResultSetHandler ) {
             Object result = invocation.proceed();
             if (result instanceof List<?> list) {
                 for (Object obj : list) {
@@ -94,8 +93,8 @@ public class EncryptionInterceptor implements Interceptor {
                 field.setAccessible(true);
                 Object value = field.get(obj);
 
-                if (value instanceof String) {
-                    String encrypted = aesEncryptor.encrypt((String) value);
+                if (value instanceof String str) {
+                    String encrypted = aesEncryptor.encrypt(str);
                     field.set(obj, encrypted);
                 }
             }
@@ -114,8 +113,8 @@ public class EncryptionInterceptor implements Interceptor {
                 field.setAccessible(true);
                 Object value = field.get(obj);
 
-                if (value instanceof String) {
-                    String decrypted = aesEncryptor.decrypt((String) value);
+                if (value instanceof String str) {
+                    String decrypted = aesEncryptor.decrypt(str);
                     field.set(obj, decrypted);
                 }
             }

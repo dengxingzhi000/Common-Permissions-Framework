@@ -44,6 +44,7 @@ public class SecurityUser implements UserDetails {
     private Integer userLevel;
     private Set<String> roles;
     private Set<String> permissions;
+    private String twoFactorSecret;
 
     // 安全相关字段
     private Boolean twoFactorEnabled;

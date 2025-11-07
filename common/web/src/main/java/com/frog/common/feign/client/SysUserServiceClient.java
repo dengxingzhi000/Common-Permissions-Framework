@@ -1,0 +1,60 @@
+package com.frog.common.feign.client;
+
+import com.frog.common.response.ApiResponse;
+import com.frog.common.security.domain.SecurityUser;
+import com.frog.common.feign.fallback.UserServiceClientFallbackFactory;
+import org.springframework.cloud.openfeign.FeignClient;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestParam;
+
+import java.util.Set;
+import java.util.UUID;
+
+/**
+ * 用户服务Feign客户端
+ * 用于服务间调用
+ *
+ * @author Deng
+ * createData 2025/10/31 9:50
+ * @version 1.0
+ */
+@FeignClient(
+        name = "user-service",
+        path = "/api/system/users",
+        fallbackFactory = UserServiceClientFallbackFactory.class
+)
+public interface SysUserServiceClient {
+    /**
+     * 根据用户名查询用户（用于认证）
+     */
+    @GetMapping("/internal/by-username/{username}")
+    ApiResponse<SecurityUser> getUserByUsername(@PathVariable("username") String username);
+
+    /**
+     * 查询用户角色
+     */
+    @GetMapping("/internal/{userId}/roles")
+    ApiResponse<Set<String>> getUserRoles(@PathVariable("userId") UUID userId);
+
+    /**
+     * 查询用户权限
+     */
+    @GetMapping("/internal/{userId}/permissions")
+    ApiResponse<Set<String>> getUserPermissions(@PathVariable("userId") UUID userId);
+
+    /**
+     * 更新最后登录信息
+     */
+    @GetMapping("/{userId}/update-login")
+    ApiResponse<Void> updateLastLogin(
+            @PathVariable("userId") UUID userId,
+            @RequestParam("ipAddress") String ipAddress
+    );
+
+    /**
+     * 获取用户信息
+     */
+    @GetMapping("/{userId}")
+    ApiResponse<UserInfo> getUserInfo(@PathVariable("userId") UUID userId);
+}
