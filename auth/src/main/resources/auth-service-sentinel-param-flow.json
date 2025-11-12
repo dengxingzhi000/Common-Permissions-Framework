@@ -1,0 +1,9 @@
+[
+  {
+    "resource": "getUserById",
+    "grade": 1,
+    "paramIdx": 0,
+    "count": 10,
+    "durationInSec": 1
+  }
+]

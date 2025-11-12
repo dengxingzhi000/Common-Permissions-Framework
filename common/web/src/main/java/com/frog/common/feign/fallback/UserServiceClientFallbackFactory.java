@@ -7,6 +7,7 @@ import com.frog.common.sentinel.feign.BaseFallbackFactory;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
+import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.Set;
 import java.util.UUID;
@@ -43,7 +44,7 @@ public class UserServiceClientFallbackFactory extends BaseFallbackFactory<SysUse
             }
 
             @Override
-            public ApiResponse<Void> updateLastLogin(UUID userId, String ipAddress) {
+            public ApiResponse<Void> updateLastLogin(UUID userId, String ipAddress, LocalDateTime loginTime) {
                 log.error("更新登录信息失败: {}, 原因: {}", userId, errorMsg);
                 return ApiResponse.fail(503, "更新登录信息失败");
             }

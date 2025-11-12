@@ -1,0 +1,302 @@
+package com.frog.common.security.loader;
+
+import com.frog.mapper.SysPermissionMapper;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.CacheManager;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Service;
+
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+/**
+ * 动态权限加载服务
+ * 支持权限热更新，无需重启应用
+ *
+ * @author Deng
+ * createData 2025/11/7 10:18
+ * @version 1.0
+ */
+@Service
+@RequiredArgsConstructor
+@Slf4j
+public class DynamicPermissionLoader {
+    private final SysPermissionMapper permissionMapper;
+    private final CacheManager cacheManager;
+    private final ApplicationEventPublisher eventPublisher;
+
+    // 内存缓存：URL -> 所需权限列表
+    private final Map<String, Set<String>> urlPermissionCache = new ConcurrentHashMap<>();
+
+    // 权限版本号（用于检测变更）
+    private volatile long permissionVersion = 0L;
+
+    /**
+     * 初始化加载权限配置
+     */
+    public void loadPermissions() {
+        log.info("Loading dynamic permissions...");
+
+        try {
+            // 查询所有API类型的权限
+            List<Map<String, Object>> apiPermissions = permissionMapper
+                    .selectApiPermissions();
+
+            Map<String, Set<String>> newCache = new HashMap<>();
+
+            for (Map<String, Object> perm : apiPermissions) {
+                String apiPath = (String) perm.get("api_path");
+                String httpMethod = (String) perm.get("http_method");
+                String permissionCode = (String) perm.get("permission_code");
+
+                if (apiPath != null && permissionCode != null) {
+                    String key = buildKey(httpMethod, apiPath);
+                    newCache.computeIfAbsent(key, k -> new HashSet<>())
+                            .add(permissionCode);
+                }
+            }
+
+            // 原子性替换缓存
+            urlPermissionCache.clear();
+            urlPermissionCache.putAll(newCache);
+
+            permissionVersion++;
+
+            log.info("Loaded {} API permission mappings, version: {}",
+                    newCache.size(), permissionVersion);
+
+            // 发布权限更新事件
+            eventPublisher.publishEvent(new PermissionRefreshEvent(this, permissionVersion));
+
+        } catch (Exception e) {
+            log.error("Failed to load permissions", e);
+        }
+    }
+
+    /**
+     * 定时刷新权限（每5分钟）
+     */
+    @Scheduled(fixedRate = 300000)
+    public void scheduleRefresh() {
+        log.debug("Scheduled permission refresh triggered");
+        loadPermissions();
+        clearRelatedCaches();
+    }
+
+    /**
+     * 手动刷新权限
+     */
+    public void manualRefresh() {
+        log.info("Manual permission refresh triggered");
+        loadPermissions();
+        clearRelatedCaches();
+    }
+
+    /**
+     * 检查URL是否需要权限
+     */
+    public boolean requiresPermission(String method, String url) {
+        String key = buildKey(method, url);
+        return urlPermissionCache.containsKey(key);
+    }
+
+    /**
+     * 获取URL所需的权限
+     */
+    public Set<String> getRequiredPermissions(String method, String url) {
+        String key = buildKey(method, url);
+        Set<String> permissions = urlPermissionCache.get(key);
+
+        // 如果没有精确匹配，尝试通配符匹配
+        if (permissions == null || permissions.isEmpty()) {
+            permissions = matchWildcardPermissions(method, url);
+        }
+
+        return permissions != null ? permissions : Collections.emptySet();
+    }
+
+    /**
+     * 通配符匹配
+     * 支持路径参数: /api/users/{id} 匹配 /api/users/123
+     */
+    private Set<String> matchWildcardPermissions(String method, String url) {
+        for (Map.Entry<String, Set<String>> entry : urlPermissionCache.entrySet()) {
+            String pattern = entry.getKey();
+
+            if (matchesPattern(pattern, method, url)) {
+                return entry.getValue();
+            }
+        }
+        return null;
+    }
+
+    /**
+     * 模式匹配
+     */
+    private boolean matchesPattern(String pattern, String method, String url) {
+        // 提取方法和路径
+        String[] patternParts = pattern.split(":", 2);
+        if (patternParts.length != 2) {
+            return false;
+        }
+
+        String patternMethod = patternParts[0];
+        String patternPath = patternParts[1];
+
+        // 方法匹配（* 表示所有方法）
+        if (!"*".equals(patternMethod) && !method.equals(patternMethod)) {
+            return false;
+        }
+
+        // 路径匹配
+        return matchesPath(patternPath, url);
+    }
+
+    /**
+     * 路径匹配算法
+     * 支持: /api/users/{id}, /api/users/*, /api/**
+     */
+    private boolean matchesPath(String pattern, String path) {
+        // 分割路径段
+        String[] patternSegments = pattern.split("/");
+        String[] pathSegments = path.split("/");
+
+        // ** 通配符：匹配任意层级
+        if (pattern.contains("**")) {
+            return matchesDeepWildcard(patternSegments, pathSegments);
+        }
+
+        // 长度不匹配
+        if (patternSegments.length != pathSegments.length) {
+            return false;
+        }
+
+        // 逐段匹配
+        for (int i = 0; i < patternSegments.length; i++) {
+            String patternSeg = patternSegments[i];
+            String pathSeg = pathSegments[i];
+
+            // {xxx} 路径参数
+            if (patternSeg.startsWith("{") && patternSeg.endsWith("}")) {
+                continue;
+            }
+
+            // * 单层通配符
+            if ("*".equals(patternSeg)) {
+                continue;
+            }
+
+            // 精确匹配
+            if (!patternSeg.equals(pathSeg)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * 深度通配符匹配
+     */
+    private boolean matchesDeepWildcard(String[] patternSegments, String[] pathSegments) {
+        int patternIdx = 0;
+        int pathIdx = 0;
+
+        while (patternIdx < patternSegments.length && pathIdx < pathSegments.length) {
+            String patternSeg = patternSegments[patternIdx];
+
+            if ("**".equals(patternSeg)) {
+                // ** 匹配剩余所有路径
+                return true;
+            }
+
+            if (patternSeg.equals(pathSegments[pathIdx]) ||
+                    "*".equals(patternSeg) ||
+                    (patternSeg.startsWith("{") && patternSeg.endsWith("}"))) {
+                patternIdx++;
+                pathIdx++;
+            } else {
+                return false;
+            }
+        }
+
+        return patternIdx == patternSegments.length && pathIdx == pathSegments.length;
+    }
+
+    /**
+     * 构建缓存key
+     */
+    private String buildKey(String method, String path) {
+        return (method != null ? method : "*") + ":" + path;
+    }
+
+    /**
+     * 清理相关缓存
+     */
+    private void clearRelatedCaches() {
+        try {
+            // 清理权限相关的所有缓存
+            String[] cacheNames = {
+                    "userPermissions", "userRoles", "permissionTree",
+                    "rolePermissions", "userInfo"
+            };
+
+            for (String cacheName : cacheNames) {
+                var cache = cacheManager.getCache(cacheName);
+                if (cache != null) {
+                    cache.clear();
+                    log.debug("Cleared cache: {}", cacheName);
+                }
+            }
+        } catch (Exception e) {
+            log.error("Failed to clear caches", e);
+        }
+    }
+
+    /**
+     * 获取权限版本号
+     */
+    public long getPermissionVersion() {
+        return permissionVersion;
+    }
+
+    /**
+     * 获取缓存统计信息
+     */
+    public Map<String, Object> getCacheStats() {
+        Map<String, Object> stats = new HashMap<>();
+        stats.put("version", permissionVersion);
+        stats.put("cachedMappings", urlPermissionCache.size());
+        stats.put("memorySize", estimateMemorySize());
+        return stats;
+    }
+
+    /**
+     * 估算内存占用
+     */
+    private long estimateMemorySize() {
+        long size = 0;
+        for (Map.Entry<String, Set<String>> entry : urlPermissionCache.entrySet()) {
+            size += entry.getKey().length() * 2L; // String占用
+            size += entry.getValue().size() * 50L; // Set元素估算
+        }
+        return size;
+    }
+
+    /**
+     * 权限刷新事件
+     */
+    public static class PermissionRefreshEvent extends org.springframework.context.ApplicationEvent {
+        private final long version;
+
+        public PermissionRefreshEvent(Object source, long version) {
+            super(source);
+            this.version = version;
+        }
+
+        public long getVersion() {
+            return version;
+        }
+    }
+}

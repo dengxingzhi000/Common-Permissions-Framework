@@ -1,5 +1,6 @@
 package com.frog.common.feign.client;
 
+import com.frog.common.dto.user.UserInfo;
 import com.frog.common.response.ApiResponse;
 import com.frog.common.security.domain.SecurityUser;
 import com.frog.common.feign.fallback.UserServiceClientFallbackFactory;
@@ -8,6 +9,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
 
+import java.time.LocalDateTime;
 import java.util.Set;
 import java.util.UUID;
 
@@ -49,7 +51,8 @@ public interface SysUserServiceClient {
     @GetMapping("/{userId}/update-login")
     ApiResponse<Void> updateLastLogin(
             @PathVariable("userId") UUID userId,
-            @RequestParam("ipAddress") String ipAddress
+            @RequestParam("ipAddress") String ipAddress,
+            LocalDateTime loginTime
     );
 
     /**

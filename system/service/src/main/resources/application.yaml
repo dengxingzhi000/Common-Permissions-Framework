@@ -3,10 +3,11 @@ server:
 
 spring:
   datasource:
-    driver-class-name: com.mysql.jdbc.Driver
-    url: jdbc:mysql://192.168.18.130:3306/new-near-sync?useUnicode=true&characterEncoding=utf-8&zeroDateTimeBehavior=convertToNull&transformedBitIsBoolean=true&allowMultiQueries=true&useSSL=false&allowPublicKeyRetrieval=true
-    username: root
+    driver-class-name: org.postgresql.Driver
+    url: jdbc:postgresql://192.168.18.134:5432/sys_service_db
+    username: admin
     password: 123456
+
 
 mybatis-plus:
   # Mapper XML 文件位置

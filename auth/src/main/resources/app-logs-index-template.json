@@ -1,0 +1,22 @@
+{
+  "index_patterns": ["app-logs-*"],
+  "template": {
+    "settings": {
+      "number_of_shards": 3,
+      "number_of_replicas": 1,
+      "index.lifecycle.name": "logs-policy"
+    },
+    "mappings": {
+      "properties": {
+        "@timestamp": { "type": "date" },
+        "level": { "type": "keyword" },
+        "logger_name": { "type": "keyword" },
+        "thread_name": { "type": "keyword" },
+        "message": { "type": "text" },
+        "traceId": { "type": "keyword" },
+        "userId": { "type": "keyword" },
+        "app": { "type": "keyword" }
+      }
+    }
+  }
+}

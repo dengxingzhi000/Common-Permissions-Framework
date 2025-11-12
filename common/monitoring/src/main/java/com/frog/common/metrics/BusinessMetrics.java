@@ -121,4 +121,34 @@ public class BusinessMetrics {
                 "cache", cacheName,
                 "hit", String.valueOf(hit));
     }
+
+    /**
+     * 登录成功率
+     */
+    public void recordLoginAttempt(boolean success, String reason) {
+        Counter.builder("business.login.attempts")
+                .tag("success", String.valueOf(success))
+                .tag("reason", reason)
+                .register(registry)
+                .increment();
+    }
+
+    /**
+     * 权限授予审计
+     */
+    public void recordPermissionGrant(String type, int count) {
+        Counter.builder("business.permission.grants")
+                .tag("type", type)
+                .register(registry)
+                .increment(count);
+    }
+
+    /**
+     * 临时权限过期预警
+     */
+    public void recordExpiringPermissions(int count) {
+        Gauge.builder("business.permissions.expiring", () -> count)
+                .description("即将过期的临时权限数量")
+                .register(registry);
+    }
 }

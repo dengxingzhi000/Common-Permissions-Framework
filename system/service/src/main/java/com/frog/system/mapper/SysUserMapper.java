@@ -19,9 +19,6 @@ import java.util.UUID;
  */
 @Mapper
 public interface SysUserMapper extends BaseMapper<SysUser> {
-
-    // ==================== 基础查询 ====================
-
     @Select("""
             SELECT * FROM sys_user
             WHERE username = #{username} AND deleted = 0

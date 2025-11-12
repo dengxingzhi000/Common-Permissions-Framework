@@ -91,7 +91,7 @@ public class SysAuthController {
         UUID userId = SecurityUtils.getCurrentUserId();
 
         // 从数据库查询完整用户信息
-        UserInfo userInfo = userServiceClient.getUserInfo(userId);
+        UserInfo userInfo = userServiceClient.getUserInfo(userId).data();
 
         return ApiResponse.success(userInfo);
     }
@@ -107,7 +107,9 @@ public class SysAuthController {
             riskLevel = 3
     )
     public ApiResponse<Void> forceLogout(@PathVariable UUID userId, @RequestParam String reason) {
+
         authService.forceLogout(userId, reason);
+
         return ApiResponse.success();
     }
 }

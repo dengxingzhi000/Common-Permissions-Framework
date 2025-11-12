@@ -41,3 +41,10 @@ spring:
             - StripPrefix=1
       default-filters:
         - StripPrefix=1
+
+security:
+  mtls:
+    keystore-path: classpath:certs/gateway-keystore.p12
+    keystore-password: changeit
+    truststore-path: classpath:certs/truststore.p12
+    truststore-password: changeit

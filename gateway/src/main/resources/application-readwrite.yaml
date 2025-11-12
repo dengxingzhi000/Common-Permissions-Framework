@@ -1,0 +1,106 @@
+spring:
+  shardingsphere:
+    datasource:
+      # === 全局数据库列表 ===
+      names: master0,slave0-0,slave0-1,master1,slave1-0,slave1-1
+
+      # === 公共连接属性 ===
+      common:
+        type: com.zaxxer.hikari.HikariDataSource
+        username: root
+        password: 123456
+        driver-class-name: com.mysql.cj.jdbc.Driver
+        hikari:
+          maximum-pool-size: 10
+          minimum-idle: 2
+          idle-timeout: 30000
+          max-lifetime: 600000
+
+      # === 主库0 + 从库 ===
+      master0:
+        type: ${spring.shardingsphere.datasource.common.type}
+        jdbc-url: jdbc:mysql://192.168.18.133:3306/near_sync_0?useSSL=false&characterEncoding=utf8
+        username: ${spring.shardingsphere.datasource.common.username}
+        password: ${spring.shardingsphere.datasource.common.password}
+
+      slave0-0:
+        type: ${spring.shardingsphere.datasource.common.type}
+        jdbc-url: jdbc:mysql://192.168.18.135:3306/near_sync_0?useSSL=false&characterEncoding=utf8
+        username: readonly
+        password: 123456
+
+      slave0-1:
+        type: ${spring.shardingsphere.datasource.common.type}
+        jdbc-url: jdbc:mysql://192.168.18.136:3306/near_sync_0?useSSL=false&characterEncoding=utf8
+        username: readonly
+        password: 123456
+
+      # === 主库1 + 从库 ===
+      master1:
+        type: ${spring.shardingsphere.datasource.common.type}
+        jdbc-url: jdbc:mysql://192.168.18.134:3306/near_sync_1?useSSL=false&characterEncoding=utf8
+        username: ${spring.shardingsphere.datasource.common.username}
+        password: ${spring.shardingsphere.datasource.common.password}
+
+      slave1-0:
+        type: ${spring.shardingsphere.datasource.common.type}
+        jdbc-url: jdbc:mysql://192.168.18.137:3306/near_sync_1?useSSL=false&characterEncoding=utf8
+        username: readonly
+        password: 123456
+
+      slave1-1:
+        type: ${spring.shardingsphere.datasource.common.type}
+        jdbc-url: jdbc:mysql://192.168.18.138:3306/near_sync_1?useSSL=false&characterEncoding=utf8
+        username: readonly
+        password: 123456
+
+    rules:
+      # === 读写分离规则 ===
+      readwrite-splitting:
+        data-sources:
+          ds0:
+            static-strategy:
+              write-data-source-name: master0
+              read-data-source-names:
+                - slave0-0
+                - slave0-1
+            load-balancer-name: round-robin
+          ds1:
+            static-strategy:
+              write-data-source-name: master1
+              read-data-source-names:
+                - slave1-0
+                - slave1-1
+            load-balancer-name: round-robin
+
+        load-balancers:
+          round-robin:
+            type: ROUND_ROBIN
+          random:
+            type: RANDOM
+          weight:
+            type: WEIGHT
+            props:
+              slave0-0: 1
+              slave0-1: 2
+
+      # === 分片规则（结合读写分离）===
+      sharding:
+        tables:
+          sys_user:
+            actual-data-nodes: ds$->{0..1}.sys_user
+            database-strategy:
+              standard:
+                sharding-column: id
+                sharding-algorithm-name: user-db-inline
+
+        sharding-algorithms:
+          user-db-inline:
+            type: INLINE
+            props:
+              algorithm-expression: ds$->{id.hashCode() % 2}
+
+    props:
+      sql-show: true
+      check-table-metadata-enabled: false
+      max-connections-size-per-query: 1

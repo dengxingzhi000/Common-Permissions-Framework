@@ -1,10 +1,19 @@
 server:
   port: 8106
+  ssl:
+    enabled: true
+    key-store: classpath:certs/auth-keystore.p12
+    key-store-password: changeit
+    key-store-type: PKCS12
+    key-alias: auth-service
+    # 要求客户端证书
+    client-auth: need
+    trust-store: classpath:certs/truststore.p12
+    trust-store-password: changeit
+    trust-store-type: PKCS12
 
 spring:
   jackson:
-    modules-to-install:
-      - com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
     serialization:
       write-dates-as-timestamps: false
     deserialization:
@@ -76,14 +85,91 @@ knife4j:
   enable: true
   setting:
     language: zh_cn
-    
-feign:
-  client:
-    config:
+
+resilience4j:
+  circuitbreaker:
+    configs:
       default:
-        connectTimeout: 5000
-        readTimeout: 10000
+        # 失败率阈值50%触发熔断
+        failureRateThreshold: 50
+        # 慢调用阈值(超过2秒算慢调用)
+        slowCallDurationThreshold: 2s
+        slowCallRateThreshold: 50
+        # 半开状态允许3次调用测试
+        permittedNumberOfCallsInHalfOpenState: 3
+        # 滑动窗口大小(最近10次调用)
+        slidingWindowSize: 10
+        # 等待时间60秒后进入半开状态
+        waitDurationInOpenState: 60s
+        # 自动从半开转换到开启
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+    instances:
+      userService:
+        baseConfig: default
+      authService:
+        baseConfig: default
+        failureRateThreshold: 60  # 认证服务容错率更高
+
+  retry:
+    configs:
+      default:
+        maxAttempts: 3
+        waitDuration: 1s
+        # 指数退避
+        enableExponentialBackoff: true
+        exponentialBackoffMultiplier: 2
+        retryExceptions:
+          - java.net.SocketTimeoutException
+          - feign.RetryableException
+    instances:
+      userService:
+        baseConfig: default
+
+  ratelimiter:
+    configs:
+      default:
+        # 每秒最多100个请求
+        limitForPeriod: 100
+        limitRefreshPeriod: 1s
+        timeoutDuration: 0s
+    instances:
+      userService:
+        baseConfig: default
+        limitForPeriod: 50
+
+  bulkhead:
+    configs:
+      default:
+        # 最大并发调用数
+        maxConcurrentCalls: 10
+        # 最大等待时间
+        maxWaitDuration: 1s
+    instances:
+      userService:
+        baseConfig: default
+
+# Feign集成
+feign:
   circuitbreaker:
     enabled: true
     alphanumericIds:
       enabled: true
+  client:
+    config:
+      default:
+        connectTimeout: 3000
+        readTimeout: 10000
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics
+  prometheus:
+    metrics:
+      export:
+        enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}
+      env: ${spring.profiles.active}

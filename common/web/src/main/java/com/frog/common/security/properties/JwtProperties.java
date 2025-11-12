@@ -15,7 +15,6 @@ import org.springframework.stereotype.Component;
 @ConfigurationProperties(prefix = "jwt")
 @Data
 public class JwtProperties {
-
     /**
      * JWT签名密钥（至少512位）
      */

@@ -1,4 +1,4 @@
-package com.frog.common.feign;
+package com.frog.common.feign.interceptor;
 
 import cn.hutool.crypto.SecureUtil;
 import cn.hutool.crypto.digest.HmacAlgorithm;

@@ -1,0 +1,78 @@
+spring:
+  shardingsphere:
+    datasource:
+      names: ds0, ds1
+
+      ds0:
+        type: com.zaxxer.hikari.HikariDataSource
+        driver-class-name: com.mysql.cj.jdbc.Driver
+        jdbc-url: jdbc:mysql://192.168.18.133:3306/near_sync_0?useSSL=false&serverTimezone=Asia/Shanghai
+        username: root
+        password: 123456
+        hikari:
+          maximum-pool-size: 10
+          minimum-idle: 2
+          connection-timeout: 30000
+
+      ds1:
+        type: com.zaxxer.hikari.HikariDataSource
+        driver-class-name: com.mysql.cj.jdbc.Driver
+        jdbc-url: jdbc:mysql://192.168.18.134:3306/near_sync_1?useSSL=false&serverTimezone=Asia/Shanghai
+        username: root
+        password: 123456
+        hikari:
+          maximum-pool-size: 10
+          minimum-idle: 2
+          connection-timeout: 30000
+
+    rules:
+      sharding:
+        # ========== 分片算法 ==========
+        sharding-algorithms:
+          user-db-inline:
+            type: INLINE
+            props:
+              algorithm-expression: ds$->{user_id.hashCode().abs() % 2}
+
+          audit-log-month:
+            type: INTERVAL
+            props:
+              datetime-pattern: yyyy-MM-dd HH:mm:ss
+              datetime-lower: 2025-01-01 00:00:00
+              datetime-upper: 2030-12-31 23:59:59
+              sharding-suffix-pattern: yyyyMM
+              datetime-interval-amount: 1
+              datetime-interval-unit: MONTHS
+
+        # ========== 表规则 ==========
+        tables:
+          sys_user:
+            actual-data-nodes: ds$->{0..1}.sys_user
+            database-strategy:
+              standard:
+                sharding-column: id
+                sharding-algorithm-name: user-db-inline
+
+          sys_audit_log:
+            actual-data-nodes: ds$->{0..1}.sys_audit_log_$->{202501..203012}
+            database-strategy:
+              standard:
+                sharding-column: user_id
+                sharding-algorithm-name: user-db-inline
+            table-strategy:
+              standard:
+                sharding-column: create_time
+                sharding-algorithm-name: audit-log-month
+
+        # ========== 广播/绑定 ==========
+        broadcast-tables:
+          - sys_role
+          - sys_permission
+          - sys_dept
+
+        binding-tables:
+          - sys_user, sys_user_role
+
+    props:
+      sql-show: true
+      check-table-metadata-enabled: false
