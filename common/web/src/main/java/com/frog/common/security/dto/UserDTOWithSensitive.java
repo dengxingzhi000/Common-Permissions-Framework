@@ -1,4 +1,4 @@
-package com.frog.common.dto.user;
+package com.frog.common.security.dto;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.frog.common.security.annotation.EncryptField;

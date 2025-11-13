@@ -15,6 +15,7 @@ import org.springframework.stereotype.Component;
  */
 @Component
 public class DegradeExceptionHandler implements SentinelExceptionHandlerStrategy {
+
     @Override
     public boolean supports(BlockException e) {
         return e instanceof DegradeException;

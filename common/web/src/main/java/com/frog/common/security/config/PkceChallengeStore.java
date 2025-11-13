@@ -8,6 +8,7 @@ package com.frog.common.security.config;
  * @version 1.0
  */
 public interface PkceChallengeStore {
+
     void save(String authorizationUri, String codeChallenge);
 
     String load(String authorizationUri);

@@ -1,7 +1,7 @@
 package com.frog.common.security.idempotent;
 
 import com.frog.common.exception.BusinessException;
-import com.frog.common.security.util.SecurityUtils;
+import com.frog.common.web.util.SecurityUtils;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -63,7 +63,7 @@ public class IdempotentAspect {
 
     private String buildKey(ProceedingJoinPoint point, Idempotent idempotent) {
         String prefix = idempotent.prefix();
-        UUID userId = SecurityUtils.getCurrentUserId();
+        UUID userId = SecurityUtils.getCurrentUserUuid().orElse(null);
 
         return switch (idempotent.type()) {
             case TOKEN -> prefix + getTokenFromRequest();

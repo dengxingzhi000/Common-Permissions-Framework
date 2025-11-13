@@ -1,6 +1,7 @@
 package com.frog.common.security.util;
 
-import com.frog.common.security.domain.SecurityUser;
+import com.frog.common.web.domain.SecurityUser;
+import com.frog.common.web.util.SecurityUtils;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -21,7 +22,6 @@ import java.util.stream.Collectors;
  */
 @Component
 public class PermissionCheckUtil {
-
     /**
      * 验证当前用户是否拥有指定权限
      */

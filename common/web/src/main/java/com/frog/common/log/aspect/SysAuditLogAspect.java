@@ -6,7 +6,7 @@ import com.frog.common.log.entity.SysAuditLog;
 import com.frog.common.log.mapper.SysAuditLogMapper;
 import com.frog.common.security.util.DesensitizeUtils;
 import com.frog.common.security.util.IpUtils;
-import com.frog.common.security.util.SecurityUtils;
+import com.frog.common.web.util.SecurityUtils;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -49,8 +49,9 @@ public class SysAuditLogAspect {
         HttpServletRequest request = attributes != null ? attributes.getRequest() : null;
 
         SysAuditLog auditLog = SysAuditLog.builder()
-                .userId(SecurityUtils.getCurrentUserId())
-                .username(SecurityUtils.getCurrentUsername())
+
+                .userId(SecurityUtils.getCurrentUserUuid().orElse(null))
+                .username(SecurityUtils.getCurrentUsername().orElse(null))
                 .operationType(annotation.businessType())
                 .operationDesc(annotation.operation())
                 .riskLevel(annotation.riskLevel())

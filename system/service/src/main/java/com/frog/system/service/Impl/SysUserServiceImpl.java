@@ -1,9 +1,9 @@
 package com.frog.system.service.Impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.frog.common.response.ResultCode;
-import com.frog.common.security.util.SecurityUtils;
 import com.frog.common.util.UUIDv7Util;
 
 import com.frog.common.exception.BusinessException;
@@ -11,6 +11,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.frog.common.dto.permission.PermissionDTO;
 import com.frog.common.dto.user.UserDTO;
 import com.frog.common.dto.user.UserInfo;
+import com.frog.common.web.util.SecurityUtils;
 import com.frog.system.domain.entity.SysUser;
 import com.frog.system.mapper.SysPermissionMapper;
 import com.frog.system.mapper.SysUserMapper;
@@ -124,7 +125,7 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
 
         // 查询角色和权限
         Set<String> roles = userMapper.findRolesByUserId(userId);
-        Set<String> permissions = userMapper.findPermissionsByUserId(userId);
+        Set<String> permissions = userMapper.findEffectivePermissionsByUserId(userId);
 
         userInfo.setRoles(roles);
         userInfo.setPermissions(permissions);
@@ -172,7 +173,8 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
 
         // 分配角色
         if (userDTO.getRoleIds() != null && !userDTO.getRoleIds().isEmpty()) {
-            userMapper.batchInsertUserRoles(user.getId(), userDTO.getRoleIds(), SecurityUtils.getCurrentUserId());
+            userMapper.batchInsertUserRoles(user.getId(), userDTO.getRoleIds(),
+                    SecurityUtils.getCurrentUserUuid().orElse(null));
         }
 
         log.info("User created: {}, by: {}", user.getUsername(), SecurityUtils.getCurrentUsername());
@@ -204,7 +206,8 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
         if (userDTO.getRoleIds() != null) {
             userMapper.deleteUserRoles(user.getId());
             if (!userDTO.getRoleIds().isEmpty()) {
-                userMapper.batchInsertUserRoles(user.getId(), userDTO.getRoleIds(), SecurityUtils.getCurrentUserId());
+                userMapper.batchInsertUserRoles(user.getId(), userDTO.getRoleIds(),
+                        SecurityUtils.getCurrentUserUuid().orElse(null));
             }
         }
 
@@ -227,12 +230,14 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
 
         // 不能删除超级管理员
         if (user.getId().equals(UUID.fromString("019a0aee-3b74-7bfc-b34f-48b5428d4875"))) {
-            throw new BusinessException(ResultCode.USER_CANNOT_DELETE_ADMIN.getCode(), ResultCode.USER_CANNOT_DELETE_ADMIN.getMessage());
+            throw new BusinessException(ResultCode.USER_CANNOT_DELETE_ADMIN.getCode(),
+                    ResultCode.USER_CANNOT_DELETE_ADMIN.getMessage());
         }
 
         // 不能删除自己
-        if (user.getId().equals(SecurityUtils.getCurrentUserId())) {
-            throw new BusinessException(ResultCode.USER_CANNOT_DELETE_SELF.getCode(), ResultCode.USER_CANNOT_DELETE_SELF.getMessage());
+        if (user.getId().equals(SecurityUtils.getCurrentUserUuid().orElse(null))) {
+            throw new BusinessException(ResultCode.USER_CANNOT_DELETE_SELF.getCode(),
+                    ResultCode.USER_CANNOT_DELETE_SELF.getMessage());
         }
 
         userMapper.deleteById(id);
@@ -259,7 +264,7 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
 
         user.setPassword(passwordEncoder.encode(newPassword));
         user.setForceChangePassword(1); // 强制修改密码
-        user.setUpdateBy(SecurityUtils.getCurrentUserId());
+        user.setUpdateBy(SecurityUtils.getCurrentUserUuid().orElse(null));
         user.setUpdateTime(LocalDateTime.now());
 
         userMapper.updateById(user);
@@ -356,7 +361,7 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
 
         // 分配新角色
         if (roleIds != null && !roleIds.isEmpty()) {
-            userMapper.batchInsertUserRoles(userId, roleIds, SecurityUtils.getCurrentUserId());
+            userMapper.batchInsertUserRoles(userId, roleIds, SecurityUtils.getCurrentUserUuid().orElse(null));
         }
 
         log.info("Roles granted to user: {}, roles: {}, by: {}",
@@ -425,7 +430,7 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
                     userId, roleIds,
                     effectiveTime != null ? effectiveTime : LocalDateTime.now(),
                     expireTime,
-                    SecurityUtils.getCurrentUserId()
+                    SecurityUtils.getCurrentUserUuid().orElse(null)
             );
         }
 
@@ -542,6 +547,15 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
         stats.put("maxApprovalAmount", maxApprovalAmount);
 
         return stats;
+    }
+
+    @Override
+    public void updateLastLogin(UUID userId, String ipAddress) {
+       LambdaUpdateWrapper<SysUser> updateWrapper = new LambdaUpdateWrapper<>();
+       updateWrapper.eq(SysUser::getId, userId)
+                   .set(SysUser::getLastLoginTime, LocalDateTime.now())
+                   .set(SysUser::getLastLoginIp, ipAddress);
+       userMapper.update(null, updateWrapper);
     }
 
     // ========== 私有方法 ==========

@@ -1,9 +1,10 @@
 package com.frog.common.security.filter;
 
+import com.frog.common.feign.client.SysPermissionServiceClient;
 import com.frog.common.log.enums.SecurityEventType;
 import com.frog.common.log.service.ISysAuditLogService;
 import com.frog.common.security.util.IpUtils;
-import com.frog.common.security.util.SecurityUtils;
+import com.frog.common.web.util.SecurityUtils;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -30,7 +31,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 @Slf4j
 public class ApiAccessControlFilter extends OncePerRequestFilter {
-    private final SysPermissionMapper permissionMapper;
+    private final SysPermissionServiceClient permissionServiceClient;
     private final ISysAuditLogService auditLogService;
 
     // 白名单路径（不需要权限检查）
@@ -60,7 +61,7 @@ public class ApiAccessControlFilter extends OncePerRequestFilter {
         }
 
         // 获取当前用户
-        UUID userId = SecurityUtils.getCurrentUserId();
+        UUID userId = SecurityUtils.getCurrentUserUuid().orElse(null);
         if (userId == null) {
             // 未登录，由JwtAuthenticationFilter处理
             filterChain.doFilter(request, response);
@@ -68,7 +69,7 @@ public class ApiAccessControlFilter extends OncePerRequestFilter {
         }
 
         // 查询该API需要的权限
-        List<String> requiredPermissions = permissionMapper
+        List<String> requiredPermissions = permissionServiceClient
                 .findPermissionsByUrl(requestUri, method);
 
         if (requiredPermissions.isEmpty()) {
@@ -78,8 +79,8 @@ public class ApiAccessControlFilter extends OncePerRequestFilter {
         }
 
         // 获取用户权限
-        Set<String> userPermissions = permissionMapper
-                .findPermissionsByUserId(userId);
+        Set<String> userPermissions = permissionServiceClient
+                .findAllPermissionsByUserId(userId);
 
         // 检查用户是否拥有所需权限
         boolean hasPermission = requiredPermissions.stream()
@@ -87,7 +88,7 @@ public class ApiAccessControlFilter extends OncePerRequestFilter {
 
         if (!hasPermission) {
             // 记录未授权访问
-            String username = SecurityUtils.getCurrentUsername();
+            String username = SecurityUtils.getCurrentUsername().orElse(null);
             String ipAddress = IpUtils.getClientIp(request);
 
             auditLogService.recordSecurityEvent(
@@ -153,7 +154,7 @@ public class ApiAccessControlFilter extends OncePerRequestFilter {
      * 记录敏感操作
      */
     private void logSensitiveOperation(UUID userId, String method, String uri) {
-        String username = SecurityUtils.getCurrentUsername();
+        String username = SecurityUtils.getCurrentUsername().orElse(null);
         log.info("Sensitive operation: user={}, method={}, uri={}",
                 username, method, uri);
 

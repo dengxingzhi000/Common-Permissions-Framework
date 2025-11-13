@@ -14,6 +14,7 @@ import java.util.UUID;
  * @version 1.0
  */
 public class UUIDTypeHandler extends BaseTypeHandler<UUID> {
+
     @Override
     public void setNonNullParameter(PreparedStatement ps, int i, UUID parameter, JdbcType jdbcType) throws SQLException {
         ps.setBytes(i, toBytes(parameter));

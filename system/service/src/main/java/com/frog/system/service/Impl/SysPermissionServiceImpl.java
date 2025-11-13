@@ -41,7 +41,7 @@ public class SysPermissionServiceImpl extends ServiceImpl<SysPermissionMapper, S
             key = "#userId + ':' + #permissionCode"
     )
     public boolean hasPermission(UUID userId, String permissionCode) {
-        Set<String> permissions = sysPermissionMapper.findPermissionsByUserId(userId);
+        Set<String> permissions = sysPermissionMapper.findAllPermissionsByUserId(userId);
         return permissions.contains(permissionCode);
     }
 
@@ -74,7 +74,7 @@ public class SysPermissionServiceImpl extends ServiceImpl<SysPermissionMapper, S
             key = "#userId"
     )
     public Set<String> getUserPermissions(UUID userId) {
-        return sysPermissionMapper.findPermissionsByUserId(userId);
+        return sysPermissionMapper.findAllPermissionsByUserId(userId);
     }
 
     /**

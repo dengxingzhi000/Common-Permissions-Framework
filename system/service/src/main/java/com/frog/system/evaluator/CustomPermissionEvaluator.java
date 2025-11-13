@@ -1,6 +1,6 @@
 package com.frog.system.evaluator;
 
-import com.frog.common.security.domain.SecurityUser;
+import com.frog.common.web.domain.SecurityUser;
 import com.frog.system.service.ISysPermissionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

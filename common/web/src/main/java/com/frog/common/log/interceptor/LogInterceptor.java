@@ -1,7 +1,7 @@
 package com.frog.common.log.interceptor;
 
 import com.frog.common.log.util.LogUtils;
-import com.frog.common.security.util.SecurityUtils;
+import com.frog.common.web.util.SecurityUtils;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
@@ -19,16 +19,23 @@ import java.util.UUID;
  */
 @Slf4j
 public class LogInterceptor implements HandlerInterceptor {
+
     @Override
-    public boolean preHandle(@NonNull HttpServletRequest request, @NonNull HttpServletResponse response, @NonNull Object handler) {
+    public boolean preHandle(@NonNull HttpServletRequest request, @NonNull HttpServletResponse response,
+                             @NonNull Object handler) {
         // 设置RequestId
         String requestId = UUID.randomUUID().toString().replace("-", "");
         LogUtils.setRequestId(requestId);
         response.setHeader("X-Request-Id", requestId);
 
         // 设置用户上下文
-        Long userId = SecurityUtils.getCurrentUserId() != null ? SecurityUtils.getCurrentUserId().getMostSignificantBits() : null;
-        String username = SecurityUtils.getCurrentUsername();
+        Long userId = null;
+        String username = SecurityUtils.getCurrentUsername().orElse(null);
+        if (SecurityUtils.getCurrentUserUuid().isPresent()) {
+            userId = SecurityUtils.getCurrentUserUuid()
+                    .map(UUID::getMostSignificantBits)
+                    .orElse(null);
+        }
         LogUtils.setUserContext(userId, username);
 
         // 记录请求开始

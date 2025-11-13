@@ -11,6 +11,7 @@ import reactor.core.publisher.Mono;
  * @version 1.0
  */
 public interface SignatureAlgorithm {
+
     String version();
 
     Mono<String> calculate(ServerHttpRequest request, String appId, String timestamp, String nonce, String secretKey);

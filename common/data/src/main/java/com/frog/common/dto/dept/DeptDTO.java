@@ -1,7 +1,9 @@
 package com.frog.common.dto.dept;
 
+import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -12,7 +14,7 @@ import java.util.UUID;
  * @version 1.0
  */
 @Data
-class DeptDTO {
+public class DeptDTO {
     private UUID id;
     private UUID parentId;
 

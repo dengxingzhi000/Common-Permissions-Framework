@@ -1,10 +1,10 @@
 package com.frog.gateway.sharding.interceptor;
 
+import com.frog.common.web.util.SecurityUtils;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
-import org.apache.catalina.security.SecurityUtil;
 import org.apache.shardingsphere.infra.hint.HintManager;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
@@ -22,10 +22,11 @@ import java.util.UUID;
 @Component
 @RequiredArgsConstructor
 public class ShardingContextInterceptor implements HandlerInterceptor {
+
     @Override
     public boolean preHandle(@NonNull HttpServletRequest request, @NonNull HttpServletResponse response,
                              @NonNull Object handler) {
-        UUID userId = SecurityUtil.getCurrentUserId();
+        UUID userId = SecurityUtils.getCurrentUserUuid().orElse(null);
         if (userId != null) {
             HintManager.clear(); // 确保干净上下文
             HintManager hintManager = HintManager.getInstance();

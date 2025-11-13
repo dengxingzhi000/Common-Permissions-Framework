@@ -1,4 +1,4 @@
-package com.frog.common.security.domain;
+package com.frog.common.web.domain;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonIgnore;

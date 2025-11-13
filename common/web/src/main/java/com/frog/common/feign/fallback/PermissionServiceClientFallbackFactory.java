@@ -1,10 +1,10 @@
 package com.frog.common.feign.fallback;
 
 
+import com.frog.common.dto.permission.PermissionDTO;
 import com.frog.common.feign.client.SysPermissionServiceClient;
+import com.frog.common.feign.factory.BaseFallbackFactory;
 import com.frog.common.response.ApiResponse;
-import com.frog.common.sentinel.feign.BaseFallbackFactory;
-import com.frog.system.domain.dto.PermissionDTO;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
@@ -20,6 +20,7 @@ import java.util.*;
 @Slf4j
 @Component
 public class PermissionServiceClientFallbackFactory extends BaseFallbackFactory<SysPermissionServiceClient> {
+
     @Override
     protected SysPermissionServiceClient createFallback(String errorMsg, Throwable cause) {
         return new SysPermissionServiceClient() {
@@ -45,6 +46,24 @@ public class PermissionServiceClientFallbackFactory extends BaseFallbackFactory<
             public ApiResponse<PermissionDTO> getPermissionById(UUID id) {
                 log.error("调用权限服务查询权限详情失败: id={}, 原因: {}", id, errorMsg, cause);
                 return ApiResponse.fail(503, "权限服务暂时不可用");
+            }
+
+            @Override
+            public List<String> findPermissionsByUrl(String url, String method) {
+                log.error("调用权限服务查询权限失败: url={}, method={}, 错误信息: {}", url, method, errorMsg, cause);
+                return Collections.emptyList();
+            }
+
+            @Override
+            public Set<String> findAllPermissionsByUserId(UUID userId) {
+                log.error("调用权限服务查询用户权限失败: userId={}, 错误信息: {}", userId, errorMsg, cause);
+                return Collections.emptySet();
+            }
+
+            @Override
+            public List<Map<String, Object>> findApiPermissions() {
+                log.error("调用权限服务查询接口权限失败: 错误信息: {}", errorMsg, cause);
+                return Collections.emptyList();
             }
         };
     }

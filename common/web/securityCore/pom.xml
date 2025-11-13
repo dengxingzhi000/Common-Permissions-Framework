@@ -5,14 +5,14 @@
         <groupId>com</groupId>
         <artifactId>NewNearSync</artifactId>
         <version>1.0-SNAPSHOT</version>
-        <relativePath>../../pom.xml</relativePath>
+        <relativePath>../../../pom.xml</relativePath>
     </parent>
 
-    <groupId>com.frog.common</groupId>
-    <artifactId>common-api</artifactId>
+    <groupId>com.frog.common.web</groupId>
+    <artifactId>securityCore</artifactId>
     <packaging>jar</packaging>
 
-    <name>common-api</name>
+    <name>securityCore</name>
     <url>http://maven.apache.org</url>
 
     <properties>
@@ -21,13 +21,16 @@
 
     <dependencies>
         <dependency>
-            <groupId>com.frog.common</groupId>
-            <artifactId>core</artifactId>
-            <version>1.0-SNAPSHOT</version>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
         </dependency>
         <dependency>
-            <groupId>org.springframework.cloud</groupId>
-            <artifactId>spring-cloud-starter-openfeign</artifactId>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-oauth2-authorization-server</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.datatype</groupId>
+            <artifactId>jackson-datatype-jsr310</artifactId>
         </dependency>
     </dependencies>
 </project>

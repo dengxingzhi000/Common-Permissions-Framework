@@ -1,7 +1,7 @@
 package com.frog.common.feign.client;
 
 import com.frog.common.response.ApiResponse;
-import com.frog.common.security.domain.SecurityUser;
+import com.frog.common.web.domain.SecurityUser;
 import com.frog.common.feign.fallback.SystemServiceClientFallbackFactory;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.*;

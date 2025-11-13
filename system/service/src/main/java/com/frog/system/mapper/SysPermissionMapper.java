@@ -31,7 +31,7 @@ public interface SysPermissionMapper extends BaseMapper<SysPermission> {
             WHERE ur.user_id = #{userId}
             AND p.status = 1 AND p.deleted = 0
             """)
-    Set<String> findPermissionsByUserId(@Param("userId") UUID userId);
+    Set<String> findAllPermissionsByUserId(@Param("userId") UUID userId);
 
     /**
      * 查询用户角色

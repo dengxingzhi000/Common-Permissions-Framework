@@ -33,8 +33,7 @@ public interface ISysUserService extends IService<SysUser> {
 
     void deleteUser(UUID id);
 
-    //todo 最后登录时间更新
-
+    void updateLastLogin(UUID userId, String ipAddress);
     // ==================== 密码管理 ====================
 
     String resetPassword(UUID id);

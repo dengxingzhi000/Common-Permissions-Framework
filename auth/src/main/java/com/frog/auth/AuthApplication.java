@@ -27,8 +27,5 @@ public class AuthApplication {
 
     public static void main(String[] args) {
         SpringApplication.run(AuthApplication.class, args);
-//        System.out.println("Swagger文档地址: http://localhost:8106/api/swagger-ui.html");
-//        System.out.println("默认管理员账号: admin");
-//        System.out.println("默认管理员密码: admin");
     }
 }

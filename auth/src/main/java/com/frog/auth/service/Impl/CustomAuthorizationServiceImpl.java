@@ -1,5 +1,6 @@
-package com.frog.auth.service;
+package com.frog.auth.service.Impl;
 
+import com.frog.auth.service.ICustomAuthorizationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
@@ -25,13 +26,14 @@ import java.util.Set;
  */
 @Service
 @RequiredArgsConstructor
-public class CustomAuthorizationService {
+public class CustomAuthorizationServiceImpl implements ICustomAuthorizationService {
     private final RegisteredClientRepository clientRepository;
     private final OAuth2AuthorizationService authorizationService;
 
     /**
      * 自定义授权码生成逻辑
      */
+    @Override
     public OAuth2Authorization createAuthorization(
             RegisteredClient client,
             Authentication principal,

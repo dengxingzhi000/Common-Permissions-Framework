@@ -5,10 +5,10 @@ import com.frog.common.feign.client.SysAuthServiceClient;
 import com.frog.common.log.annotation.AuditLog;
 import com.frog.common.domain.PageResult;
 import com.frog.common.response.ApiResponse;
-import com.frog.common.security.util.SecurityUtils;
 import com.frog.common.dto.user.ChangePasswordRequest;
 import com.frog.common.dto.role.TemporaryRoleGrantDTO;
 import com.frog.common.dto.user.UserDTO;
+import com.frog.common.web.util.SecurityUtils;
 import com.frog.system.service.ISysUserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -112,7 +112,7 @@ public class SysUserController {
      */
     @PostMapping("/change-password")
     public ApiResponse<Void> changePassword(@Validated @RequestBody ChangePasswordRequest request) {
-        UUID userId = SecurityUtils.getCurrentUserId();
+        UUID userId = SecurityUtils.getCurrentUserUuid().orElse(null);
         userService.changePassword(userId, request.getOldPassword(), request.getNewPassword());
         return ApiResponse.success();
     }
@@ -267,7 +267,7 @@ public class SysUserController {
     ApiResponse<Void> updateLastLogin(
             @PathVariable("userId") UUID userId,
             @RequestParam("ipAddress") String ipAddress) {
-        userService
+        userService.updateLastLogin(userId, ipAddress);
         return ApiResponse.success();
     }
 }

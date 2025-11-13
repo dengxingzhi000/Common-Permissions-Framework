@@ -1,4 +1,4 @@
-package com.frog.common.sentinel.feign;
+package com.frog.common.feign.factory;
 
 import feign.FeignException;
 import lombok.extern.slf4j.Slf4j;
@@ -15,6 +15,7 @@ import java.net.SocketTimeoutException;
  */
 @Slf4j
 public abstract class BaseFallbackFactory<T> implements FallbackFactory<T> {
+
     @Override
     public T create(Throwable cause) {
         String errorMsg = switch (cause) {

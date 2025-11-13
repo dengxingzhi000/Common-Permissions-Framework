@@ -14,10 +14,15 @@ import java.util.UUID;
  * @since 2025-10-14
  */
 public interface ISysAuditLogService extends IService<SysAuditLog> {
+
     void recordLogin(UUID userId, String username, String ipAddress,
                      boolean success, String remark);
 
     void recordLoginFailure(String username, String ipAddress, String reason);
 
     void recordLogout(UUID userId, String remark);
+
+    void recordSecurityEvent(String eventType, Integer riskLevel, UUID userId,
+                             String username, String ipAddress,
+                             String resource, boolean success, String details);
 }

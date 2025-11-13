@@ -19,6 +19,7 @@ import java.util.UUID;
  */
 @Mapper
 public interface SysUserMapper extends BaseMapper<SysUser> {
+
     @Select("""
             SELECT * FROM sys_user
             WHERE username = #{username} AND deleted = 0
@@ -52,7 +53,7 @@ public interface SysUserMapper extends BaseMapper<SysUser> {
             AND ur.approval_status = 1
             AND (ur.expire_time IS NULL OR ur.expire_time > NOW())
             """)
-    Set<String> findPermissionsByUserId(@Param("userId") UUID userId);
+    Set<String> findEffectivePermissionsByUserId(@Param("userId") UUID userId);
 
     @Select("""
             SELECT role_id FROM sys_user_role 

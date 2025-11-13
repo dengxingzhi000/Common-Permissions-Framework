@@ -7,12 +7,12 @@ import com.frog.common.log.annotation.AuditLog;
 import com.frog.common.response.ApiResponse;
 import com.frog.common.security.util.HttpServletRequestUtils;
 import com.frog.common.security.util.IpUtils;
-import com.frog.common.security.util.SecurityUtils;
 import com.frog.common.sentinel.annotation.RateLimit;
 import com.frog.common.dto.user.LoginRequest;
 import com.frog.common.dto.user.LoginResponse;
 import com.frog.common.dto.user.RefreshTokenRequest;
 import com.frog.auth.service.ISysAuthService;
+import com.frog.common.web.util.SecurityUtils;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -60,7 +60,7 @@ public class SysAuthController {
     @PostMapping("/logout")
     public ApiResponse<Void> logout(HttpServletRequest request) {
         String token = httpServletRequestUtils.getTokenFromRequest(request);
-        UUID userId = SecurityUtils.getCurrentUserId();
+        UUID userId = SecurityUtils.getCurrentUserUuid().orElse(null);
 
         authService.logout(token, userId, "用户主动登出");
 
@@ -88,7 +88,7 @@ public class SysAuthController {
      */
     @GetMapping("/userinfo")
     public ApiResponse<UserInfo> getUserInfo() {
-        UUID userId = SecurityUtils.getCurrentUserId();
+        UUID userId = SecurityUtils.getCurrentUserUuid().orElse(null);
 
         // 从数据库查询完整用户信息
         UserInfo userInfo = userServiceClient.getUserInfo(userId).data();

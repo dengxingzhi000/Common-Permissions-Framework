@@ -39,6 +39,11 @@
             <artifactId>web</artifactId>
             <version>1.0-SNAPSHOT</version>
         </dependency>
+        <dependency>
+            <groupId>com.frog.common.web</groupId>
+            <artifactId>securityCore</artifactId>
+            <version>1.0-SNAPSHOT</version>
+        </dependency>
         <!-- common end -->
 
         <!-- database start -->
@@ -47,6 +52,18 @@
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
         </dependency>
+        <dependency>
+            <groupId>org.apache.shardingsphere</groupId>
+            <artifactId>shardingsphere-authority-core</artifactId>
+            <version>5.4.1</version>
+        </dependency>
         <!-- database end -->
+
+        <!-- spring start -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+        </dependency>
+        <!-- spring end -->
     </dependencies>
 </project>

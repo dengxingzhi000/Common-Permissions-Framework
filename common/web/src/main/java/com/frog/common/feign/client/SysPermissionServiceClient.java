@@ -1,14 +1,15 @@
 package com.frog.common.feign.client;
 
+import com.frog.common.dto.permission.PermissionDTO;
 import com.frog.common.response.ApiResponse;
 import com.frog.common.feign.fallback.PermissionServiceClientFallbackFactory;
-import com.frog.system.domain.dto.PermissionDTO;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 /**
@@ -25,7 +26,6 @@ import java.util.UUID;
         fallbackFactory = PermissionServiceClientFallbackFactory.class
 )
 public interface SysPermissionServiceClient {
-
     /**
      * 查询权限树
      */
@@ -35,19 +35,38 @@ public interface SysPermissionServiceClient {
     /**
      * 查询用户权限
      */
-    @GetMapping("/internal/user/{userId}")
+    @GetMapping("/user/{userId}")
     ApiResponse<Set<String>> getUserPermissions(@PathVariable("userId") UUID userId);
 
     /**
      * 查询用户是否有指定权限
      */
-    @GetMapping("/internal/user/{userId}/has-permission")
+    @GetMapping("/user/{userId}/has-permission")
     ApiResponse<Boolean> hasPermission(@PathVariable("userId") UUID userId,
                                        @RequestParam("permissionCode") String permissionCode);
 
     /**
      * 根据ID获取权限详情
      */
-    @GetMapping("/internal/{id}")
+    @GetMapping("/{id}")
     ApiResponse<PermissionDTO> getPermissionById(@PathVariable("id") UUID id);
+
+    /**
+     * 根据URL和HTTP方法查询权限
+     */
+    @GetMapping("/find-by-url")
+    List<String> findPermissionsByUrl(@RequestParam("url") String url, @RequestParam("method") String method);
+
+    /**
+     * 根据用户ID查询权限
+     */
+    @GetMapping("/find-by-userId")
+    Set<String> findAllPermissionsByUserId(@RequestParam("userId") UUID userId);
+
+    /**
+     * 查询所有API权限
+     */
+    //todo 待完善
+    @GetMapping("/api")
+    List<Map<String, Object>> findApiPermissions();
 }

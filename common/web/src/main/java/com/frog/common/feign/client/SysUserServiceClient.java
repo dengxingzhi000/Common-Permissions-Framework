@@ -2,7 +2,7 @@ package com.frog.common.feign.client;
 
 import com.frog.common.dto.user.UserInfo;
 import com.frog.common.response.ApiResponse;
-import com.frog.common.security.domain.SecurityUser;
+import com.frog.common.web.domain.SecurityUser;
 import com.frog.common.feign.fallback.UserServiceClientFallbackFactory;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -30,19 +30,19 @@ public interface SysUserServiceClient {
     /**
      * 根据用户名查询用户（用于认证）
      */
-    @GetMapping("/internal/by-username/{username}")
+    @GetMapping("/by-username/{username}")
     ApiResponse<SecurityUser> getUserByUsername(@PathVariable("username") String username);
 
     /**
      * 查询用户角色
      */
-    @GetMapping("/internal/{userId}/roles")
+    @GetMapping("/{userId}/roles")
     ApiResponse<Set<String>> getUserRoles(@PathVariable("userId") UUID userId);
 
     /**
      * 查询用户权限
      */
-    @GetMapping("/internal/{userId}/permissions")
+    @GetMapping("/{userId}/permissions")
     ApiResponse<Set<String>> getUserPermissions(@PathVariable("userId") UUID userId);
 
     /**
@@ -60,4 +60,18 @@ public interface SysUserServiceClient {
      */
     @GetMapping("/{userId}")
     ApiResponse<UserInfo> getUserInfo(@PathVariable("userId") UUID userId);
+
+    /**
+     * 查询用户角色
+     */
+    //todo 待完善
+    @GetMapping("/find-roles-by-userId")
+    ApiResponse<Set<String>> findRolesByUserId(@RequestParam("userId") UUID userId);
+
+    /**
+     * 查询用户权限
+     */
+    //todo 待完善
+    @GetMapping("/find-permissions-by-userId")
+    ApiResponse<Set<String>> findPermissionsByUserId(@RequestParam("userId") UUID userId);
 }

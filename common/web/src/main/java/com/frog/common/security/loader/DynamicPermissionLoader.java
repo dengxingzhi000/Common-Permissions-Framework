@@ -1,6 +1,6 @@
 package com.frog.common.security.loader;
 
-import com.frog.mapper.SysPermissionMapper;
+import com.frog.common.feign.client.SysPermissionServiceClient;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.CacheManager;
@@ -22,7 +22,7 @@ import java.util.concurrent.ConcurrentHashMap;
 @RequiredArgsConstructor
 @Slf4j
 public class DynamicPermissionLoader {
-    private final SysPermissionMapper permissionMapper;
+    private final SysPermissionServiceClient permissionServiceClient;
     private final CacheManager cacheManager;
     private final ApplicationEventPublisher eventPublisher;
 
@@ -40,8 +40,8 @@ public class DynamicPermissionLoader {
 
         try {
             // 查询所有API类型的权限
-            List<Map<String, Object>> apiPermissions = permissionMapper
-                    .selectApiPermissions();
+            List<Map<String, Object>> apiPermissions = permissionServiceClient
+                    .findApiPermissions();
 
             Map<String, Set<String>> newCache = new HashMap<>();
 

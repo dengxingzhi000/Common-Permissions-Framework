@@ -1,7 +1,7 @@
 package com.frog.common.uaa.service;
 
 import com.frog.common.response.ApiResponse;
-import com.frog.common.security.domain.SecurityUser;
+import com.frog.common.web.domain.SecurityUser;
 import com.frog.common.feign.client.SysUserServiceClient;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

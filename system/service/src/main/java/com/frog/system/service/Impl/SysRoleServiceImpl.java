@@ -3,9 +3,9 @@ package com.frog.system.service.Impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.frog.common.exception.BusinessException;
-import com.frog.common.security.util.SecurityUtils;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.frog.common.dto.role.RoleDTO;
+import com.frog.common.web.util.SecurityUtils;
 import com.frog.system.domain.entity.SysRole;
 import com.frog.system.mapper.SysRoleMapper;
 import com.frog.system.service.ISysRoleService;
@@ -123,7 +123,7 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
 
         // 分配权限
         if (roleDTO.getPermissionIds() != null && !roleDTO.getPermissionIds().isEmpty()) {
-            roleMapper.batchInsertRolePermissions(role.getId(), roleDTO.getPermissionIds(), SecurityUtils.getCurrentUserId());
+            roleMapper.batchInsertRolePermissions(role.getId(), roleDTO.getPermissionIds(), SecurityUtils.getCurrentUserUuid().orElse(null));
         }
 
         log.info("Role created: {}, by: {}", role.getRoleCode(), SecurityUtils.getCurrentUsername());
@@ -209,7 +209,7 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
 
         // 分配新权限
         if (permissionIds != null && !permissionIds.isEmpty()) {
-            roleMapper.batchInsertRolePermissions(roleId, permissionIds, SecurityUtils.getCurrentUserId());
+            roleMapper.batchInsertRolePermissions(roleId, permissionIds, SecurityUtils.getCurrentUserUuid().orElse(null));
         }
 
         log.info("Permissions granted to role: {}, permissions count: {}, by: {}",

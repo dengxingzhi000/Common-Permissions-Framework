@@ -1,15 +1,17 @@
 package com.frog.common.uaa.config;
 
-import com.frog.common.security.domain.SecurityUser;
+import com.frog.common.web.domain.SecurityUser;
 import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.jwk.source.ImmutableJWKSet;
 import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
+import org.springframework.beans.factory.annotation.Value;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
+import org.springframework.core.io.DefaultResourceLoader;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -32,7 +34,11 @@ import org.springframework.security.oauth2.server.authorization.token.JwtEncodin
 import org.springframework.security.oauth2.server.authorization.token.OAuth2TokenCustomizer;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
+import org.springframework.web.filter.ForwardedHeaderFilter;
 
+import java.io.InputStream;
+import java.security.Key;
+import java.security.KeyStore;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.interfaces.RSAPrivateKey;
@@ -50,29 +56,40 @@ import java.util.UUID;
 @Configuration
 @RequiredArgsConstructor
 public class AuthorizationServerConfig {
+
+    @Value("${security.oauth2.authorizationserver.issuer:http://localhost:8090}")
+    private String issuer;
+
+    // Optional keystore-based JWK configuration (fallback to generated if missing)
+    @Value("${security.oauth2.authorizationserver.jwk.keystore-location:}")
+    private String keystoreLocation;
+    @Value("${security.oauth2.authorizationserver.jwk.keystore-password:}")
+    private String keystorePassword;
+    @Value("${security.oauth2.authorizationserver.jwk.key-alias:}")
+    private String keyAlias;
+    @Value("${security.oauth2.authorizationserver.jwk.key-password:}")
+    private String keyPassword;
     /**
      * OAuth2授权服务器安全过滤链
      */
     @Bean
     @Order(1)
     public SecurityFilterChain authorizationServerSecurityFilterChain(HttpSecurity http) throws Exception {
+		OAuth2AuthorizationServerConfigurer authorizationServerConfigurer = new OAuth2AuthorizationServerConfigurer();
 
-        http.with(new OAuth2AuthorizationServerConfigurer(), Customizer.withDefaults());
+		// 仅匹配授权服务器端点；精确忽略 CSRF
+		http
+				.securityMatcher(authorizationServerConfigurer.getEndpointsMatcher())
+				.authorizeHttpRequests(auth -> auth.anyRequest().authenticated())
+				.csrf(csrf -> csrf.ignoringRequestMatchers(authorizationServerConfigurer.getEndpointsMatcher()))
+				.exceptionHandling(exceptions -> exceptions.authenticationEntryPoint(new LoginUrlAuthenticationEntryPoint("/login")))
+				.oauth2ResourceServer(oauth2 -> oauth2.jwt(Customizer.withDefaults()));
 
-        // 启用 OpenID Connect 支持
-        http.getConfigurer(OAuth2AuthorizationServerConfigurer.class)
-                .oidc(Customizer.withDefaults());
+		// 启用 OIDC 支持
+		authorizationServerConfigurer.oidc(Customizer.withDefaults());
+		http.with(authorizationServerConfigurer, Customizer.withDefaults());
 
-        // 异常处理与资源服务器配置
-        http
-                .exceptionHandling(exceptions ->
-                        exceptions.authenticationEntryPoint(new LoginUrlAuthenticationEntryPoint("/login"))
-                )
-                .oauth2ResourceServer(oauth2 ->
-                        oauth2.jwt(Customizer.withDefaults())
-                );
-
-        return http.build();
+		return http.build();
     }
 
     /**
@@ -172,14 +189,17 @@ public class AuthorizationServerConfig {
      */
     @Bean
     public JWKSource<SecurityContext> jwkSource() {
-        KeyPair keyPair = generateRsaKey();
-        RSAPublicKey publicKey = (RSAPublicKey) keyPair.getPublic();
-        RSAPrivateKey privateKey = (RSAPrivateKey) keyPair.getPrivate();
-
-        RSAKey rsaKey = new RSAKey.Builder(publicKey)
-                .privateKey(privateKey)
-                .keyID(UUID.randomUUID().toString())
-                .build();
+        // 优先从 keystore 加载；失败则回退到启动时生成
+        RSAKey rsaKey = loadRsaFromKeystore();
+        if (rsaKey == null) {
+            KeyPair keyPair = generateRsaKey();
+            RSAPublicKey publicKey = (RSAPublicKey) keyPair.getPublic();
+            RSAPrivateKey privateKey = (RSAPrivateKey) keyPair.getPrivate();
+            rsaKey = new RSAKey.Builder(publicKey)
+                    .privateKey(privateKey)
+                    .keyID(UUID.randomUUID().toString())
+                    .build();
+        }
 
         JWKSet jwkSet = new JWKSet(rsaKey);
         return new ImmutableJWKSet<>(jwkSet);
@@ -206,7 +226,7 @@ public class AuthorizationServerConfig {
     @Bean
     public AuthorizationServerSettings authorizationServerSettings() {
         return AuthorizationServerSettings.builder()
-                .issuer("http://localhost:8090") // 生产环境使用实际域名
+                .issuer(issuer)
                 .build();
     }
 
@@ -218,18 +238,68 @@ public class AuthorizationServerConfig {
     @Bean
     public OAuth2TokenCustomizer<JwtEncodingContext> jwtCustomizer() {
         return context -> {
-            if (context.getTokenType().getValue().equals("access_token")) {
-                Authentication principal = context.getPrincipal();
+            if (!"access_token".equals(context.getTokenType().getValue())) {
+                return;
+            }
 
-                // 添加自定义Claims
+            AuthorizationGrantType grantType = context.getAuthorizationGrantType();
+            boolean userGrant = AuthorizationGrantType.AUTHORIZATION_CODE.equals(grantType)
+                    || AuthorizationGrantType.REFRESH_TOKEN.equals(grantType)
+                    || new AuthorizationGrantType("password").equals(grantType);
+
+            if (!userGrant) {
+                return;
+            }
+
+            Authentication principal = context.getPrincipal();
+            if (principal != null && principal.getPrincipal() instanceof SecurityUser user) {
                 context.getClaims().claims(claims -> {
-                    SecurityUser user = (SecurityUser) principal.getPrincipal();
-                    claims.put("userId", user.getUserId().toString());
-                    claims.put("deptId", user.getDeptId().toString());
+                    claims.put("userId", String.valueOf(user.getUserId()));
+                    claims.put("deptId", String.valueOf(user.getDeptId()));
                     claims.put("roles", user.getRoles());
                     claims.put("permissions", user.getPermissions());
                 });
             }
         };
+    }
+
+    @Bean
+    public ForwardedHeaderFilter forwardedHeaderFilter() {
+        return new ForwardedHeaderFilter();
+    }
+
+    private RSAKey loadRsaFromKeystore() {
+        if (!hasText(keystoreLocation) || !hasText(keyAlias)) {
+            return null;
+        }
+        try {
+            var resource = new DefaultResourceLoader().getResource(keystoreLocation);
+            if (!resource.exists()) {
+                return null;
+            }
+            try (InputStream is = resource.getInputStream()) {
+                KeyStore keyStore = KeyStore.getInstance("JKS");
+                char[] ksPass = hasText(keystorePassword) ? keystorePassword.toCharArray() : null;
+                keyStore.load(is, ksPass);
+
+                char[] keyPass = hasText(keyPassword) ? keyPassword.toCharArray() : null;
+                Key key = keyStore.getKey(keyAlias, keyPass);
+                if (key instanceof RSAPrivateKey privateKey) {
+                    var cert = keyStore.getCertificate(keyAlias);
+                    RSAPublicKey publicKey = (RSAPublicKey) cert.getPublicKey();
+                    return new RSAKey.Builder(publicKey)
+                            .privateKey(privateKey)
+                            .keyID(UUID.randomUUID().toString())
+                            .build();
+                }
+            }
+        } catch (Exception ignored) {
+            // ignore and fallback
+        }
+        return null;
+    }
+
+    private static boolean hasText(String s) {
+        return s != null && !s.trim().isEmpty();
     }
 }

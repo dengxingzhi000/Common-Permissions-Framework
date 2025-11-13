@@ -15,6 +15,7 @@ import org.springframework.stereotype.Component;
  */
 @Component
 public class FlowExceptionHandler implements SentinelExceptionHandlerStrategy {
+
     @Override
     public boolean supports(BlockException e) {
         return e instanceof FlowException;

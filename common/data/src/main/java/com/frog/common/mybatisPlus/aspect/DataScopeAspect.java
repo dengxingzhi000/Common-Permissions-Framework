@@ -2,8 +2,8 @@ package com.frog.common.mybatisPlus.aspect;
 
 import com.frog.common.mybatisPlus.annotation.DataScope;
 import com.frog.common.mybatisPlus.context.DataScopeContextHolder;
-import com.frog.common.security.domain.SecurityUser;
-import com.frog.common.security.util.SecurityUtils;
+import com.frog.common.web.domain.SecurityUser;
+import com.frog.common.web.util.SecurityUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;

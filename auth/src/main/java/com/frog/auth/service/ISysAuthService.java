@@ -13,6 +13,7 @@ import java.util.UUID;
  * @version 1.0
  */
 public interface ISysAuthService {
+
     LoginResponse login(LoginRequest request, String ipAddress, String deviceId);
 
     void logout(String token, UUID userId, String reason);

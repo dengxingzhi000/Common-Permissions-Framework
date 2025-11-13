@@ -2,7 +2,7 @@ package com.frog.auth.service.Impl;
 
 import com.frog.common.feign.client.SysUserServiceClient;
 import com.frog.common.metrics.BusinessMetrics;
-import com.frog.common.security.domain.SecurityUser;
+import com.frog.common.web.domain.SecurityUser;
 import com.frog.common.security.properties.JwtProperties;
 import com.frog.common.security.properties.SecurityProperties;
 import com.frog.common.security.util.JwtUtils;
@@ -212,8 +212,8 @@ public class SysAuthServiceImpl implements ISysAuthService {
         String username = jwtUtils.getUsernameFromToken(refreshToken);
 
         // 重新获取用户权限
-        Set<String> roles = userServiceClient.findRolesByUserId(userId);
-        Set<String> permissions = userServiceClient.findPermissionsByUserId(userId);
+        Set<String> roles = userServiceClient.findRolesByUserId(userId).data();
+        Set<String> permissions = userServiceClient.findPermissionsByUserId(userId).data();
 
         String newAccessToken = jwtUtils.refreshToken(
                 refreshToken, roles, permissions, deviceId, ipAddress);

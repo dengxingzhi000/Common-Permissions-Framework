@@ -23,6 +23,7 @@ import java.util.stream.Collectors;
  */
 @Component
 public class HmacSha256V2WithBody implements SignatureAlgorithm {
+
     @Override
     public String version() {
         return "HMAC-SHA256-V2";

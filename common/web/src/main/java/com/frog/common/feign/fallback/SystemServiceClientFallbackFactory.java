@@ -1,9 +1,9 @@
 package com.frog.common.feign.fallback;
 
+import com.frog.common.feign.factory.BaseFallbackFactory;
 import com.frog.common.response.ApiResponse;
-import com.frog.common.security.domain.SecurityUser;
+import com.frog.common.web.domain.SecurityUser;
 import com.frog.common.feign.client.SystemServiceClient;
-import com.frog.common.sentinel.feign.BaseFallbackFactory;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
@@ -20,6 +20,7 @@ import java.util.UUID;
 @Slf4j
 @Component
 public class SystemServiceClientFallbackFactory extends BaseFallbackFactory<SystemServiceClient> {
+
     @Override
     protected SystemServiceClient createFallback(String errorMsg, Throwable cause) {
         return new SystemServiceClient() {

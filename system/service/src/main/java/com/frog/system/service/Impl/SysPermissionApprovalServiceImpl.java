@@ -4,10 +4,10 @@ import com.alibaba.fastjson2.JSON;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.frog.common.exception.BusinessException;
-import com.frog.common.security.util.SecurityUtils;
 import com.frog.common.util.UUIDv7Util;
 import com.frog.common.dto.approval.ApprovalDTO;
 import com.frog.common.dto.approval.ApprovalProcessDTO;
+import com.frog.common.web.util.SecurityUtils;
 import com.frog.system.domain.entity.SysPermissionApproval;
 import com.frog.system.domain.entity.SysUser;
 import com.frog.system.mapper.SysPermissionApprovalMapper;
@@ -42,7 +42,7 @@ public class SysPermissionApprovalServiceImpl
     @Override
     @Transactional(rollbackFor = Exception.class)
     public UUID submitApproval(ApprovalDTO dto) {
-        UUID currentUserId = SecurityUtils.getCurrentUserId();
+        UUID currentUserId = SecurityUtils.getCurrentUserUuid().orElse(null);
 
         // 1. 检查是否有重复的待审批申请
         if (approvalMapper.existsPendingApplication(
@@ -98,7 +98,7 @@ public class SysPermissionApprovalServiceImpl
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void processApproval(UUID approvalId, ApprovalProcessDTO dto) {
-        UUID currentUserId = SecurityUtils.getCurrentUserId();
+        UUID currentUserId = SecurityUtils.getCurrentUserUuid().orElse(null);
 
         // 1. 查询审批记录
         SysPermissionApproval approval = approvalMapper.selectById(approvalId);
@@ -190,7 +190,7 @@ public class SysPermissionApprovalServiceImpl
                                         .map(UUID::fromString)
                                         .toList();
                                 userMapper.batchInsertUserRoles(targetUserId, roleIds,
-                                        SecurityUtils.getCurrentUserId());
+                                        SecurityUtils.getCurrentUserUuid().orElse(null));
                             });
 
             case 2 -> // 权限申请
@@ -218,7 +218,7 @@ public class SysPermissionApprovalServiceImpl
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void withdrawApproval(UUID approvalId) {
-        UUID currentUserId = SecurityUtils.getCurrentUserId();
+        UUID currentUserId = SecurityUtils.getCurrentUserUuid().orElse(null);
 
         SysPermissionApproval approval = approvalMapper.selectById(approvalId);
         if (approval == null) {
@@ -246,7 +246,7 @@ public class SysPermissionApprovalServiceImpl
      */
     @Override
     public Page<ApprovalDTO> getPendingApprovals(Integer pageNum, Integer pageSize) {
-        UUID currentUserId = SecurityUtils.getCurrentUserId();
+        UUID currentUserId = SecurityUtils.getCurrentUserUuid().orElse(null);
         Page<SysPermissionApproval> page = new Page<>(pageNum, pageSize);
 
         Page<SysPermissionApproval> result = approvalMapper.selectPendingApprovals(
@@ -260,7 +260,7 @@ public class SysPermissionApprovalServiceImpl
      */
     @Override
     public Page<ApprovalDTO> getMyApplications(Integer pageNum, Integer pageSize) {
-        UUID currentUserId = SecurityUtils.getCurrentUserId();
+        UUID currentUserId = SecurityUtils.getCurrentUserUuid().orElse(null);
         Page<SysPermissionApproval> page = new Page<>(pageNum, pageSize);
 
         Page<SysPermissionApproval> result = approvalMapper.selectUserApplyHistory(

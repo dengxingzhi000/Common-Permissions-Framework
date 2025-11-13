@@ -1,8 +1,8 @@
 package com.frog.common.feign.fallback;
 
 import com.frog.common.feign.client.SysAuthServiceClient;
+import com.frog.common.feign.factory.BaseFallbackFactory;
 import com.frog.common.response.ApiResponse;
-import com.frog.common.sentinel.feign.BaseFallbackFactory;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
@@ -18,6 +18,7 @@ import java.util.UUID;
 @Slf4j
 @Component
 public class SysAuthServiceClientFallbackFactory extends BaseFallbackFactory<SysAuthServiceClient> {
+
     @Override
     protected SysAuthServiceClient createFallback(String errorMsg, Throwable cause) {
         return new SysAuthServiceClient() {

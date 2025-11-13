@@ -81,4 +81,14 @@ public class SysPermissionController {
         permissionService.deletePermission(id);
         return ApiResponse.success();
     }
+
+    /**
+     * 根据id查询权限
+     */
+    @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('system:permission:list')")
+    public ApiResponse<PermissionDTO> getById(@PathVariable UUID id) {
+        PermissionDTO permissionDTO = permissionService.getPermissionById(id);
+        return ApiResponse.success(permissionDTO);
+    }
 }

@@ -1,6 +1,6 @@
 package com.frog.system.service.Impl;
 
-import com.frog.common.security.domain.SecurityUser;
+import com.frog.common.web.domain.SecurityUser;
 import com.frog.system.mapper.SysUserMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -43,7 +43,7 @@ public class UserDetailsServiceImpl implements UserDetailsService {
         Set<String> roles = sysUserMapper.findRolesByUserId(user.getId());
 
         // 查询用户权限（包括角色权限）
-        Set<String> permissions = sysUserMapper.findPermissionsByUserId(user.getId());
+        Set<String> permissions = sysUserMapper.findEffectivePermissionsByUserId(user.getId());
 
         SecurityUser securityUser = SecurityUser.builder()
                 .userId(user.getId())

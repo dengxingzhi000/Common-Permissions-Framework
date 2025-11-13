@@ -43,12 +43,13 @@ public class IpAccessControlFilter implements GlobalFilter, Ordered {
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
         String clientIp = getClientIp(exchange);
+        String message = "IP已被拉黑";
 
         // 1. 先检查本地缓存
         Boolean cached = ipCache.getIfPresent(clientIp);
         if (cached != null) {
             if (!cached) {
-                return blockRequest(exchange, "IP已被拉黑");
+                return blockRequest(exchange, message);
             }
             return chain.filter(exchange);
         }
@@ -59,7 +60,7 @@ public class IpAccessControlFilter implements GlobalFilter, Ordered {
                     if (Boolean.TRUE.equals(inBlacklist)) {
                         ipCache.put(clientIp, false);
                         log.warn("Blocked blacklisted IP: {}", clientIp);
-                        return blockRequest(exchange, "IP已被拉黑");
+                        return blockRequest(exchange, message);
                     }
 
                     // 3. 检查白名单（可选）

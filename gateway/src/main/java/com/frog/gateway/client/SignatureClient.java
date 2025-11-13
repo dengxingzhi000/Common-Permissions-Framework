@@ -17,6 +17,7 @@ import java.util.stream.Collectors;
  * @version 1.0
  */
 public class SignatureClient {
+
     public static Map<String, String> generateHeaders(String appId, String secretKey,
                                                       String url, Map<String, String> params,
                                                       String body) {

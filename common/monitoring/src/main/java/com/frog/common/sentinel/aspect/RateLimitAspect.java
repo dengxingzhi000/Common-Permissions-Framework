@@ -22,6 +22,7 @@ import org.springframework.stereotype.Component;
 @Component
 @Slf4j
 public class RateLimitAspect {
+
     @Around("@annotation(rateLimit)")
     public Object around(ProceedingJoinPoint point, RateLimit rateLimit) throws Throwable {
         String resourceName = rateLimit.value();
