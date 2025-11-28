@@ -1,0 +1,25 @@
+{{- if .Values.istio.enabled }}
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: {{ include "app.fullname" . }}
+spec:
+  host: {{ include "app.fullname" . }}
+  trafficPolicy:
+    tls:
+      mode: ISTIO_MUTUAL
+    {{- with .Values.istio.circuitBreaker.connectionPool }}
+    connectionPool: {{- toYaml . | nindent 6 }}
+    {{- end }}
+    {{- with .Values.istio.circuitBreaker.outlierDetection }}
+    outlierDetection: {{- toYaml . | nindent 6 }}
+    {{- end }}
+  subsets:
+    - name: stable
+      labels:
+        version: stable
+    - name: canary
+      labels:
+        version: canary
+{{- end }}
+

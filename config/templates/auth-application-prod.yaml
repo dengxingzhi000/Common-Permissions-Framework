@@ -1,0 +1,49 @@
+server:
+  ssl:
+    enabled: true
+    key-store: ${AUTH_KEYSTORE_PATH}
+    key-store-password: ${AUTH_KEYSTORE_PASS}
+    key-store-type: PKCS12
+    key-alias: ${AUTH_KEY_ALIAS}
+    client-auth: need
+    trust-store: ${AUTH_TRUSTSTORE_PATH}
+    trust-store-password: ${AUTH_TRUSTSTORE_PASS}
+    trust-store-type: PKCS12
+
+spring:
+  application:
+    name: auth-service
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+
+security:
+  oauth2:
+    authorizationserver:
+      issuer: https://auth.example.com
+  jwt:
+    access-token-ttl-minutes: 10
+    refresh-token-ttl-days: 7
+    refresh-rotate: true
+    reuse-detection: true
+  mfa:
+    totp:
+      replay-window-seconds: 90
+
+management:
+  server:
+    port: 18086
+  endpoints:
+    web:
+      exposure:
+        include: health,prometheus
+  endpoint:
+    health:
+      show-details: never
+
+springdoc:
+  api-docs:
+    enabled: false
+knife4j:
+  enable: false
+

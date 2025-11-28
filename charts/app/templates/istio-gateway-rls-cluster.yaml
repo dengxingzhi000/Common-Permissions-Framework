@@ -1,0 +1,32 @@
+{{- if and .Values.istio.enabled .Values.istio.rateLimit.enabled (eq .Values.istio.rateLimit.scope "gateway") }}
+apiVersion: networking.istio.io/v1alpha3
+kind: EnvoyFilter
+metadata:
+  name: {{ include "app.fullname" . }}-gw-rls-cluster
+  namespace: {{ .Values.istio.rateLimit.gateway.namespace }}
+spec:
+  workloadSelector:
+    labels: {{- toYaml .Values.istio.rateLimit.gateway.selector | nindent 6 }}
+  configPatches:
+    - applyTo: CLUSTER
+      match:
+        context: GATEWAY
+      patch:
+        operation: ADD
+        value:
+          name: rate_limit_cluster
+          type: STRICT_DNS
+          connect_timeout: 1s
+          lb_policy: ROUND_ROBIN
+          http2_protocol_options: {}
+          load_assignment:
+            cluster_name: rate_limit_cluster
+            endpoints:
+              - lb_endpoints:
+                  - endpoint:
+                      address:
+                        socket_address:
+                          address: {{ .Values.istio.rateLimit.gateway.rls.host }}
+                          port_value: {{ .Values.istio.rateLimit.gateway.rls.port }}
+{{- end }}
+

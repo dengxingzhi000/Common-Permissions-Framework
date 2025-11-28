@@ -1,0 +1,12 @@
+replicaCount: 1
+ingress:
+  enabled: true
+  hosts:
+    - host: dev.example.com
+      paths:
+        - path: /
+          pathType: ImplementationSpecific
+istio:
+  gateway:
+    hosts: ["dev.example.com"]
+

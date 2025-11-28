@@ -1,0 +1,18 @@
+name: seata-server
+image:
+  repository: seataio/seata-server
+  tag: 2.0.0
+  pullPolicy: IfNotPresent
+replicaCount: 1
+service:
+  type: ClusterIP
+  port: 8091
+resources:
+  requests: { cpu: 100m, memory: 256Mi }
+  limits:   { cpu: 500m, memory: 512Mi }
+config:
+  mode: file
+  storeMode: file    # file|db
+  serverPort: 8091
+  serviceGroup: default_tx_group
+

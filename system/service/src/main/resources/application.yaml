@@ -2,6 +2,19 @@ server:
   port: 8081
 
 spring:
+  application:
+    name: system-service
+  config:
+    import:
+      - optional:nacos:${spring.application.name}.yaml?server-addr=${spring.cloud.nacos.server-addr}
+      - optional:nacos:common.yaml?server-addr=${spring.cloud.nacos.server-addr}
+  cloud:
+    nacos:
+      server-addr: ${NACOS_SERVER:127.0.0.1:8848}
+      config:
+        enabled: true
+        namespace: ${NACOS_NAMESPACE:public}
+        group: ${NACOS_GROUP:DEFAULT_GROUP}
   datasource:
     driver-class-name: org.postgresql.Driver
     url: jdbc:postgresql://192.168.18.134:5432/sys_service_db
@@ -33,3 +46,12 @@ mybatis-plus:
     log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
     # 缓存
     cache-enabled: false
+
+dubbo:
+  application:
+    name: ${spring.application.name}
+  protocol:
+    name: dubbo
+    port: -1
+  registry:
+    address: nacos://${spring.cloud.nacos.server-addr}

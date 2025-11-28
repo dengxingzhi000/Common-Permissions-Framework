@@ -1,0 +1,27 @@
+name: orders-projector
+image:
+  repository: your.registry.com/your-team/orders-projector
+  tag: latest
+  pullPolicy: IfNotPresent
+replicas: 1
+resources:
+  requests: { cpu: 100m, memory: 256Mi }
+  limits:   { cpu: 1, memory: 512Mi }
+kafka:
+  bootstrapServers: kafka-cluster-kafka-bootstrap.kafka:9092
+  topic: orders.events.v1
+  groupId: orders-projector
+readModel:
+  kind: elasticsearch
+  es:
+    url: http://elasticsearch-master.elasticsearch:9200
+    index: orders_view
+cache:
+  enabled: false
+  redis:
+    host: redis-master.redis
+    port: 6379
+security:
+  authzEnabled: true
+  auditTopic: audit.logs.v1
+

@@ -1,0 +1,15 @@
+name: orders-snapshotter
+image:
+  repository: your.registry.com/your-team/orders-snapshotter
+  tag: latest
+  pullPolicy: IfNotPresent
+schedule: "*/10 * * * *"
+kafka:
+  bootstrapServers: kafka-cluster-kafka-bootstrap.kafka:9092
+  eventsTopic: orders.events.v1
+  snapshotsTopic: orders.snapshots.v1
+  groupId: orders-snapshotter
+resources:
+  requests: { cpu: 100m, memory: 256Mi }
+  limits:   { cpu: 500m, memory: 512Mi }
+

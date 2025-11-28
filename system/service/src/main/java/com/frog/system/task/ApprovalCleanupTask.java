@@ -5,6 +5,7 @@ import com.frog.system.mapper.SysPermissionApprovalMapper;
 import com.frog.system.mapper.SysUserMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import com.frog.system.notification.NotificationService;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -22,6 +23,7 @@ import java.util.List;
 public class ApprovalCleanupTask {
     private final SysUserMapper userMapper;
     private final SysPermissionApprovalMapper approvalMapper;
+    private final NotificationService notificationService;
 
     /**
      * 每小时检查并更新过期的临时权限
@@ -84,7 +86,6 @@ public class ApprovalCleanupTask {
                     log.info("Temporary role expiring soon: user={}, role={}, expireTime={}",
                             username, roleName, expireTime);
 
-                    // TODO: 发送通知邮件
                     sendExpiringNotification(username, email, roleName, expireTime);
                 }
             }
@@ -144,15 +145,20 @@ public class ApprovalCleanupTask {
      */
     private void sendExpiringNotification(String username, String email,
                                           String roleName, Object expireTime) {
-        // TODO: 集成邮件服务
-        log.debug("Would send expiring notification to: {}", email);
+        String subject = "权限即将过期提醒";
+        String message = String.format("您好 %s，您的角色 %s 将于 %s 过期，请及时申请续期。", username, roleName, expireTime);
+        notificationService.sendEmail(email, subject, message);
+        notificationService.sendSystemMessage(username, message);
     }
 
     /**
      * 发送审批即将过期通知
      */
     private void sendApprovalExpiringNotification(SysPermissionApproval approval) {
-        // TODO: 集成消息通知服务
-        log.debug("Would send approval expiring notification for: {}", approval.getId());
+        String subject = "审批即将过期提醒";
+        String message = String.format("审批单 %s（类型：%s）将于 %s 过期，请尽快处理。",
+                approval.getId(), approval.getApprovalType(), approval.getExpireTime());
+        // 这里缺少收件人/用户名来源，实际集成时可通过审批实体补充
+        notificationService.sendSystemMessage("approver", message);
     }
 }

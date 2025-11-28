@@ -1,0 +1,21 @@
+{{- if .Values.users }}
+{{- $ns := include "kafka.ns" . -}}
+{{- range $u := .Values.users }}
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaUser
+metadata:
+  name: {{ $u.name }}
+  namespace: {{ $ns }}
+  labels:
+    strimzi.io/cluster: {{ $.Values.cluster.name }}
+spec:
+  authentication:
+    type: tls
+  authorization:
+    type: simple
+    acls:
+      {{- toYaml $u.acls | nindent 6 }}
+{{- end }}
+{{- end }}
+

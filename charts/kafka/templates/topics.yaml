@@ -1,0 +1,51 @@
+{{- if and .Values.topicsEnabled .Values.topics -}}
+{{- $ns := include "kafka.ns" . -}}
+{{- range $t := .Values.topics }}
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: {{ $t.name }}
+  namespace: {{ $ns }}
+  labels:
+    strimzi.io/cluster: {{ $.Values.cluster.name }}
+spec:
+  partitions: {{ $t.partitions }}
+  replicas: {{ $t.replicas }}
+  config:
+    retention.ms: {{ $t.retentionMs }}
+    cleanup.policy: {{ $t.cleanupPolicy }}
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: {{ printf "%s%s" $t.name $.Values.retry.suffix }}
+  namespace: {{ $ns }}
+  labels:
+    strimzi.io/cluster: {{ $.Values.cluster.name }}
+    eda.role: retry
+    eda.base: {{ $t.name }}
+spec:
+  partitions: {{ $t.partitions }}
+  replicas: {{ $t.replicas }}
+  config:
+    retention.ms: {{ $.Values.retry.retentionMs }}
+    cleanup.policy: delete
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: {{ printf "%s%s" $t.name $.Values.dlq.suffix }}
+  namespace: {{ $ns }}
+  labels:
+    strimzi.io/cluster: {{ $.Values.cluster.name }}
+    eda.role: dlq
+    eda.base: {{ $t.name }}
+spec:
+  partitions: {{ $t.partitions }}
+  replicas: {{ $t.replicas }}
+  config:
+    retention.ms: {{ $.Values.dlq.retentionMs }}
+    cleanup.policy: {{ $.Values.dlq.cleanupPolicy }}
+{{- end }}
+{{- end }}

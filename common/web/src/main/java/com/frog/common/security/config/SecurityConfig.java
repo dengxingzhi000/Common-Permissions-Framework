@@ -4,6 +4,7 @@ import com.frog.common.security.filter.JwtAuthenticationFilter;
 import com.frog.common.security.filter.SqlInjectionFilter;
 import com.frog.common.security.handler.JwtAccessDeniedHandler;
 import com.frog.common.security.handler.JwtAuthenticationEntryPoint;
+import com.frog.common.security.stepup.StepUpFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -44,6 +45,7 @@ public class SecurityConfig {
     private final SqlInjectionFilter sqlInjectionFilter;
     private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
     private final JwtAccessDeniedHandler jwtAccessDeniedHandler;
+    private final StepUpFilter stepUpFilter;
 
     /**
      * Spring Security 主过滤器链
@@ -117,7 +119,8 @@ public class SecurityConfig {
 
                 // 8️⃣ 添加自定义过滤器
                 .addFilterBefore(sqlInjectionFilter, LogoutFilter.class)
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterAfter(stepUpFilter, JwtAuthenticationFilter.class);
 
         return http.build();
     }
@@ -140,7 +143,8 @@ public class SecurityConfig {
         configuration.setExposedHeaders(Arrays.asList(
                 "Authorization",
                 "X-Total-Count",
-                "X-Request-ID"
+                "X-Request-ID",
+                "X-StepUp-Required"
         ));
         configuration.setAllowCredentials(true);
         configuration.setMaxAge(3600L);

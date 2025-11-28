@@ -1,0 +1,46 @@
+{{- if and .Values.istio.enabled .Values.istio.rateLimit.enabled (eq .Values.istio.rateLimit.scope "gateway") .Values.istio.gateway.enabled }}
+apiVersion: networking.istio.io/v1alpha3
+kind: EnvoyFilter
+metadata:
+  name: {{ include "app.fullname" . }}-gw-rls-route
+  namespace: {{ .Values.istio.rateLimit.gateway.namespace }}
+spec:
+  workloadSelector:
+    labels: {{- toYaml .Values.istio.rateLimit.gateway.selector | nindent 6 }}
+  configPatches:
+    {{- range $host := .Values.istio.gateway.hosts }}
+    - applyTo: VIRTUAL_HOST
+      match:
+        context: GATEWAY
+        routeConfiguration:
+          vhost:
+            name: "{{ $host }}:80"
+      patch:
+        operation: MERGE
+        value:
+          typed_per_filter_config:
+            envoy.filters.http.ratelimit:
+              "@type": type.googleapis.com/envoy.extensions.filters.http.ratelimit.v3.RateLimitPerRoute
+              rate_limit:
+                actions:
+                  - generic_key:
+                      descriptor_value: {{ include "app.fullname" $ | quote }}
+    - applyTo: VIRTUAL_HOST
+      match:
+        context: GATEWAY
+        routeConfiguration:
+          vhost:
+            name: "{{ $host }}:443"
+      patch:
+        operation: MERGE
+        value:
+          typed_per_filter_config:
+            envoy.filters.http.ratelimit:
+              "@type": type.googleapis.com/envoy.extensions.filters.http.ratelimit.v3.RateLimitPerRoute
+              rate_limit:
+                actions:
+                  - generic_key:
+                      descriptor_value: {{ include "app.fullname" $ | quote }}
+    {{- end }}
+{{- end }}
+

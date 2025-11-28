@@ -1,0 +1,44 @@
+spring:
+  application:
+    name: api-gateway
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: https://auth.example.com/oauth2/jwks
+  cloud:
+    gateway:
+      default-filters:
+        - name: RequestRateLimiter
+          args:
+            redis-rate-limiter.replenishRate: 100
+            redis-rate-limiter.burstCapacity: 200
+      globalcors:
+        corsConfigurations:
+          '[/**]':
+            allowedOrigins:
+              - https://app.example.com
+            allowedMethods: [GET,POST,PUT,DELETE,OPTIONS,PATCH]
+            allowedHeaders: ["*"]
+            allowCredentials: true
+            maxAge: 3600
+      routes:
+        - id: auth
+          uri: lb://auth-service
+          predicates: [ Path=/api/auth/** ]
+          metadata:
+            aud: auth-service
+        - id: system
+          uri: lb://system-service
+          predicates: [ Path=/api/system/** ]
+          metadata:
+            aud: system-service
+
+management:
+  server:
+    port: 18080
+  endpoints:
+    web:
+      exposure:
+        include: health,prometheus
+

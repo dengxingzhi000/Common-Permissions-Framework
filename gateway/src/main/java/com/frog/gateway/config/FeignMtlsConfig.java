@@ -2,19 +2,20 @@ package com.frog.gateway.config;
 
 import com.frog.gateway.properties.MtlsProperties;
 import feign.Client;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClients;
+import okhttp3.ConnectionPool;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.Resource;
 import org.springframework.scheduling.annotation.Scheduled;
-import feign.httpclient.ApacheHttpClient;
 
 import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManager;
 import javax.net.ssl.TrustManagerFactory;
+import javax.net.ssl.X509TrustManager;
 import java.io.InputStream;
 import java.security.KeyStore;
 import java.security.SecureRandom;
@@ -23,53 +24,53 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Date;
 import java.util.Enumeration;
+import java.util.concurrent.TimeUnit;
 
 /**
- * Feign 双向 TLS (mTLS) 安全配置
- *
- * @author Deng
- * @since 2025/11/10
+ * Feign 双向 TLS (mTLS) 配置（OkHttp）
  */
 @Slf4j
 @Configuration
+@RequiredArgsConstructor
+@ConditionalOnProperty(prefix = "security.mtls", name = "enabled", havingValue = "true", matchIfMissing = true)
 public class FeignMtlsConfig {
     private final MtlsProperties mtlsProperties;
 
-    /** SSLContext 缓存（防止每次重建） */
     private volatile SSLContext cachedSslContext;
+    private volatile X509TrustManager cachedTrustManager;
 
     @Bean
     public Client feignClient() throws Exception {
-        CloseableHttpClient httpClient = HttpClients.custom()
-                .setSSLSocketFactory(createSslSocketFactory())
+        okhttp3.OkHttpClient okHttpClient = new okhttp3.OkHttpClient.Builder()
+                .sslSocketFactory(getSslContext().getSocketFactory(), getTrustManager())
+                .connectionPool(new ConnectionPool(
+                        mtlsProperties.getMaxIdleConnections(),
+                        mtlsProperties.getKeepAliveMinutes(),
+                        TimeUnit.MINUTES
+                ))
+                .connectTimeout(mtlsProperties.getConnectTimeoutMs(), TimeUnit.MILLISECONDS)
+                .readTimeout(mtlsProperties.getReadTimeoutMs(), TimeUnit.MILLISECONDS)
+                .writeTimeout(mtlsProperties.getWriteTimeoutMs(), TimeUnit.MILLISECONDS)
                 .build();
-        return new ApacheHttpClient(httpClient);
+
+        return new feign.okhttp.OkHttpClient(okHttpClient);
     }
 
-    private FeignMtlsConfig(MtlsProperties mtlsProperties) {
-        this.mtlsProperties = mtlsProperties;
-    }
-
-    /**
-     * 创建 SSL Socket 工厂（支持缓存）
-     */
-    private synchronized SSLConnectionSocketFactory createSslSocketFactory() throws Exception {
+    private synchronized SSLContext getSslContext() throws Exception {
         if (cachedSslContext == null) {
-            cachedSslContext = buildSslContext();
+            buildSslArtifacts();
         }
-
-        return new SSLConnectionSocketFactory(
-                cachedSslContext,
-                new String[]{"TLSv1.3", "TLSv1.2"},
-                null,
-                SSLConnectionSocketFactory.getDefaultHostnameVerifier()
-        );
+        return cachedSslContext;
     }
 
-    /**
-     * 构建 SSL 上下文
-     */
-    private SSLContext buildSslContext() throws Exception {
+    private synchronized X509TrustManager getTrustManager() throws Exception {
+        if (cachedTrustManager == null) {
+            buildSslArtifacts();
+        }
+        return cachedTrustManager;
+    }
+
+    private void buildSslArtifacts() throws Exception {
         KeyStore keyStore = loadKeyStore(mtlsProperties.getKeystorePath(), mtlsProperties.getKeystorePassword());
         KeyStore trustStore = loadKeyStore(mtlsProperties.getTruststorePath(), mtlsProperties.getTruststorePassword());
 
@@ -79,16 +80,25 @@ public class FeignMtlsConfig {
         TrustManagerFactory tmf = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
         tmf.init(trustStore);
 
-        SSLContext sslContext = SSLContext.getInstance("TLS");
-        sslContext.init(kmf.getKeyManagers(), tmf.getTrustManagers(), new SecureRandom());
+        X509TrustManager x509Tm = null;
+        for (TrustManager tm : tmf.getTrustManagers()) {
+            if (tm instanceof X509TrustManager) {
+                x509Tm = (X509TrustManager) tm;
+                break;
+            }
+        }
+        if (x509Tm == null) {
+            throw new IllegalStateException("No X509TrustManager found");
+        }
 
-        log.info("mTLS SSLContext successfully initialized.");
-        return sslContext;
+        SSLContext sslContext = SSLContext.getInstance("TLS");
+        sslContext.init(kmf.getKeyManagers(), new TrustManager[]{x509Tm}, new SecureRandom());
+
+        cachedSslContext = sslContext;
+        cachedTrustManager = x509Tm;
+        log.info("mTLS SSLContext (OkHttp) initialized.");
     }
 
-    /**
-     * 通用 keystore 加载方法
-     */
     private KeyStore loadKeyStore(Resource resource, String password) throws Exception {
         KeyStore keyStore = KeyStore.getInstance("PKCS12");
         try (InputStream is = resource.getInputStream()) {
@@ -97,22 +107,18 @@ public class FeignMtlsConfig {
         return keyStore;
     }
 
-    /**
-     * 定时检测证书有效期（每天凌晨2点）
-     */
     @Scheduled(cron = "0 0 2 * * ?")
     public void checkCertificateExpiry() {
         try {
             KeyStore keyStore = loadKeyStore(mtlsProperties.getKeystorePath(), mtlsProperties.getKeystorePassword());
             Enumeration<String> aliases = keyStore.aliases();
             if (!aliases.hasMoreElements()) {
-                log.warn("KeyStore 中未找到任何证书条目。");
+                log.warn("KeyStore 中未找到任何证书条目");
                 return;
             }
 
             String alias = aliases.nextElement();
             X509Certificate cert = (X509Certificate) keyStore.getCertificate(alias);
-
             if (cert == null) {
                 log.warn("无法获取证书: {}", alias);
                 return;
@@ -124,7 +130,7 @@ public class FeignMtlsConfig {
             if (daysUntilExpiry < 0) {
                 log.error("客户端证书已过期: {} (过期日期: {})", alias, notAfter);
             } else if (daysUntilExpiry < 30) {
-                log.warn("客户端证书即将过期 (剩余 {} 天, 到期日期: {})", daysUntilExpiry, notAfter);
+                log.warn("客户端证书即将过期(剩余 {} 天, 到期日期: {})", daysUntilExpiry, notAfter);
                 // TODO: 发送通知（Email / Webhook / 报警平台）
             } else {
                 log.debug("证书 [{}] 状态正常，有效期至 {}", alias, notAfter);

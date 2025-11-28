@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/schemas/orders.created.v1.json",
+  "title": "orders.created.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "eventId": {"type": "string"},
+    "traceId": {"type": "string"},
+    "producer": {"type": "string"},
+    "occurredAt": {"type": "string", "format": "date-time"},
+    "order": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {"type": "string"},
+        "userId": {"type": "string"},
+        "amount": {"type": "number", "minimum": 0},
+        "currency": {"type": "string", "minLength": 1},
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "sku": {"type": "string"},
+              "qty": {"type": "number", "minimum": 1},
+              "price": {"type": "number", "minimum": 0}
+            },
+            "required": ["sku", "qty", "price"]
+          },
+          "minItems": 1
+        }
+      },
+      "required": ["id", "userId", "amount", "currency", "items"]
+    }
+  },
+  "required": ["eventId", "traceId", "producer", "occurredAt", "order"]
+}
+

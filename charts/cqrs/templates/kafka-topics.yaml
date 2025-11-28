@@ -1,0 +1,38 @@
+{{- if .Values.topicsEnabled }}
+{{- $ns := .Values.namespace | default .Release.Namespace -}}
+{{- $cluster := (index .Values "kafkaClusterName") | default "kafka-cluster" -}}
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: {{ printf "%s.events.%s" .Values.domain .Values.version }}
+  namespace: kafka
+  labels: { strimzi.io/cluster: {{ $cluster }} }
+spec:
+  partitions: {{ .Values.partitions }}
+  replicas: {{ .Values.replicas }}
+  config: { retention.ms: {{ .Values.retentionMs.events }} }
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: {{ printf "%s.snapshots.%s" .Values.domain .Values.version }}
+  namespace: kafka
+  labels: { strimzi.io/cluster: {{ $cluster }} }
+spec:
+  partitions: {{ .Values.partitions }}
+  replicas: {{ .Values.replicas }}
+  config: { retention.ms: {{ .Values.retentionMs.snapshots }} }
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: audit.logs.v1
+  namespace: kafka
+  labels: { strimzi.io/cluster: {{ $cluster }} }
+spec:
+  partitions: 3
+  replicas: {{ .Values.replicas }}
+  config: { retention.ms: {{ .Values.retentionMs.audit }} }
+{{- end }}
+

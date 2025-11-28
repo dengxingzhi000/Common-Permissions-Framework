@@ -1,0 +1,7 @@
+apiVersion: v2
+name: seata
+description: Seata server (standalone/file) for Saga/TCC
+type: application
+version: 0.1.0
+appVersion: "2.0.0"
+

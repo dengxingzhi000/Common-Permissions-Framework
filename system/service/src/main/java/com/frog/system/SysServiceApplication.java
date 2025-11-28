@@ -1,7 +1,9 @@
 package com.frog.system;
 
+import org.apache.dubbo.config.spring.context.annotation.EnableDubbo;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
 
 /**
  * Service模块启动类
@@ -11,6 +13,8 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
  * @version 1.0
  */
 @SpringBootApplication
+@EnableDiscoveryClient
+@EnableDubbo
 public class SysServiceApplication {
 
     public static void main(String[] args) {

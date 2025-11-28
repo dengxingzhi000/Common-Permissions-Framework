@@ -39,7 +39,11 @@ public class SysDeptController {
 
     @PostMapping
     @PreAuthorize("hasAuthority('system:dept:add')")
-    @AuditLog(operation = "新增部门", businessType = "DEPT", riskLevel = 3)
+    @AuditLog(
+            operation = "新增部门",
+            businessType = "DEPT",
+            riskLevel = 3
+    )
     public ApiResponse<Void> add(@Validated @RequestBody DeptDTO deptDTO) {
         deptService.addDept(deptDTO);
         return ApiResponse.success();
@@ -47,7 +51,11 @@ public class SysDeptController {
 
     @PutMapping("/{id}")
     @PreAuthorize("hasAuthority('system:dept:edit')")
-    @AuditLog(operation = "修改部门", businessType = "DEPT", riskLevel = 3)
+    @AuditLog(
+            operation = "修改部门",
+            businessType = "DEPT",
+            riskLevel = 3
+    )
     public ApiResponse<Void> update(@PathVariable UUID id,
                                     @Validated @RequestBody DeptDTO deptDTO) {
         deptDTO.setId(id);
@@ -57,7 +65,11 @@ public class SysDeptController {
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAuthority('system:dept:delete')")
-    @AuditLog(operation = "删除部门", businessType = "DEPT", riskLevel = 4)
+    @AuditLog(
+            operation = "删除部门",
+            businessType = "DEPT",
+            riskLevel = 4
+    )
     public ApiResponse<Void> delete(@PathVariable UUID id) {
         deptService.deleteDept(id);
         return ApiResponse.success();

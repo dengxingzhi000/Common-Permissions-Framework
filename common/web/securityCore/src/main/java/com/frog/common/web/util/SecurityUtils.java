@@ -22,9 +22,6 @@ import java.util.UUID;
 public final class SecurityUtils {
     private static volatile CurrentUserProvider provider = new SpringSecurityCurrentUserProvider();
 
-    private SecurityUtils() {}
-
-    // 允许在测试或非 Spring 环境替换实现
     public static void setProvider(CurrentUserProvider custom) {
         provider = (custom != null) ? custom : new SpringSecurityCurrentUserProvider();
     }

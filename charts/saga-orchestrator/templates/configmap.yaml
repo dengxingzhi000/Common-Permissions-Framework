@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.name }}-saga
+data:
+  saga.yaml: |
+    strategy: {{ .Values.definition.strategy }}
+    timeoutSeconds: {{ .Values.definition.timeoutSeconds }}
+    steps:
+    {{- range .Values.definition.steps }}
+      - name: {{ .name }}
+        command:
+          topic: {{ .command.topic }}
+          type: {{ .command.type }}
+        compensate:
+          topic: {{ .compensate.topic }}
+          type: {{ .compensate.type }}
+        timeoutSeconds: {{ .timeoutSeconds }}
+    {{- end }}
+

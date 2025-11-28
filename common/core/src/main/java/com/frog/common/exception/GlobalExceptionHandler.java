@@ -22,7 +22,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-
 /**
  * 全局异常处理
  *
@@ -128,7 +127,8 @@ public class GlobalExceptionHandler {
         });
 
         log.warn("Validation failed: {}", errors);
-        return new ApiResponse<>(ResultCode.BAD_REQUEST.getCode(), "参数校验失败", errors, System.currentTimeMillis());
+        return new ApiResponse<>(ResultCode.BAD_REQUEST.getCode(), "参数校验失败", errors,
+                System.currentTimeMillis());
     }
 
     /**
@@ -147,7 +147,8 @@ public class GlobalExceptionHandler {
                 ));
 
         log.warn("Bind exception: {}", errors);
-        return new ApiResponse<>(ResultCode.BAD_REQUEST.getCode(), "参数绑定失败", errors, System.currentTimeMillis());
+        return new ApiResponse<>(ResultCode.BAD_REQUEST.getCode(), "参数绑定失败", errors,
+                System.currentTimeMillis());
     }
 
     /**

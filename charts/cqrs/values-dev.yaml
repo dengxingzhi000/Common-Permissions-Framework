@@ -1,0 +1,11 @@
+domain: orders
+version: v1
+command:
+  image:
+    repository: your.registry.com/your-team/orders-command
+    tag: dev
+query:
+  image:
+    repository: your.registry.com/your-team/orders-query
+    tag: dev
+

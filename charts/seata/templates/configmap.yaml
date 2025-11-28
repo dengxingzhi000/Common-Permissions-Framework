@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.name }}-config
+data:
+  application.yml: |
+    server:
+      port: {{ .Values.config.serverPort }}
+    seata:
+      service:
+        vgroupMapping:
+          {{ .Values.config.serviceGroup }}: default
+        default:
+          grouplist:
+            - {{ .Values.name }}:{{ .Values.service.port }}
+      store:
+        mode: {{ .Values.config.storeMode }}
+        file:
+          dir: /seata/data
+

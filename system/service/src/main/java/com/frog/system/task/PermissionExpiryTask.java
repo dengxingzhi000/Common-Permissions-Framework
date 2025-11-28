@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+import com.frog.system.notification.NotificationService;
 
 import java.util.List;
 import java.util.Map;
@@ -21,6 +22,7 @@ import java.util.Map;
 @Slf4j
 public class PermissionExpiryTask {
     private final SysUserMapper userMapper;
+    private final NotificationService notificationService;
 
     /**
      * 每天凌晨2点检查并处理过期权限
@@ -122,6 +124,10 @@ public class PermissionExpiryTask {
                 String roleName = (String) role.get("role_name");
 
                 log.info("Sending expiry notification to user: {}, role: {}", username, roleName);
+                String subject = "权限已过期提醒";
+                String body = String.format("您好 %s，您被授予的角色 %s 已过期。", username, roleName);
+                notificationService.sendEmail(email, subject, body);
+                notificationService.sendSystemMessage(username, body);
 
                 // TODO: 调用邮件服务发送通知
                 // emailService.sendExpiryNotification(email, username, roleName);
@@ -147,6 +153,10 @@ public class PermissionExpiryTask {
 
             log.info("Sending expiring notification to user: {}, role: {}, expireTime: {}",
                     username, roleName, expireTime);
+            String subject = "权限即将过期提醒";
+            String message = String.format("您好 %s，您的角色 %s 将于 %s 过期，请及时申请续期。", username, roleName, expireTime);
+            notificationService.sendEmail(email, subject, message);
+            notificationService.sendSystemMessage(username, message);
 
             // TODO: 调用邮件服务
             // String message = String.format(

@@ -9,6 +9,7 @@ import cn.hutool.crypto.symmetric.AES;
 import org.springframework.beans.factory.annotation.Value;
 
 import java.nio.charset.StandardCharsets;
+
 /**
  * AES加密工具类
  *
@@ -20,7 +21,7 @@ import java.nio.charset.StandardCharsets;
 @Slf4j
 public class AESEncryptor {
 
-    @Value("${security.crypto.aes-key:your-32-byte-aes-key-for-field}")
+    @Value("${security.crypto.aes-key}")
     private String aesKey;
 
     private AES aes;

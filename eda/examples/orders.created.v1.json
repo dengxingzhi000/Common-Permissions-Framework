@@ -1,0 +1,16 @@
+{
+  "eventId": "e-123",
+  "traceId": "t-abc",
+  "producer": "order-service",
+  "occurredAt": "2024-01-01T12:00:00Z",
+  "order": {
+    "id": "o-1",
+    "userId": "u-9",
+    "amount": 123.45,
+    "currency": "USD",
+    "items": [
+      {"sku": "sku-1", "qty": 1, "price": 123.45}
+    ]
+  }
+}
+

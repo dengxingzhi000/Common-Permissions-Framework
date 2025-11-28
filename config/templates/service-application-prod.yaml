@@ -1,0 +1,30 @@
+spring:
+  application:
+    name: ${SERVICE_NAME}
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: https://auth.example.com/oauth2/jwks
+
+management:
+  server:
+    port: 18081
+  endpoints:
+    web:
+      exposure:
+        include: health,prometheus
+  endpoint:
+    health:
+      show-details: when_authorized
+
+springdoc:
+  api-docs:
+    enabled: false
+knife4j:
+  enable: false
+
+cors:
+  allowed-origins:
+    - https://app.example.com
+

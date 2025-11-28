@@ -1,0 +1,7 @@
+apiVersion: v2
+name: flink-job
+description: FlinkDeployment (requires Apache Flink K8s Operator)
+type: application
+version: 0.1.0
+appVersion: "1.18"
+

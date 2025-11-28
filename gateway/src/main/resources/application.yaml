@@ -8,13 +8,15 @@ spring:
     active: dev
   config:
     import:
-      - optional:nacos:gateway-service.yaml?server-addr=192.168.18.130:8848
+      - optional:nacos:${spring.application.name}.yaml?server-addr=${spring.cloud.nacos.server-addr}
+      - optional:nacos:common.yaml?server-addr=${spring.cloud.nacos.server-addr}
   cloud:
     nacos:
-      server-addr: 192.168.18.130:8848
+      server-addr: ${NACOS_SERVER:127.0.0.1:8848}
       config:
         enabled: true
-        namespace: public
+        namespace: ${NACOS_NAMESPACE:public}
+        group: ${NACOS_GROUP:DEFAULT_GROUP}
     gateway:
       discovery:
         locator:

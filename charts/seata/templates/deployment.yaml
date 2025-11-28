@@ -1,0 +1,31 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.name }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels: { app: {{ .Values.name }} }
+  template:
+    metadata:
+      labels: { app: {{ .Values.name }} }
+    spec:
+      containers:
+        - name: seata
+          image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.service.port }}
+          env:
+            - name: SEATA_CONFIG_NAME
+              value: file:/etc/seata/application.yml
+          volumeMounts:
+            - name: config
+              mountPath: /etc/seata/application.yml
+              subPath: application.yml
+          resources: {{- toYaml .Values.resources | nindent 12 }}
+      volumes:
+        - name: config
+          configMap:
+            name: {{ .Values.name }}-config
+

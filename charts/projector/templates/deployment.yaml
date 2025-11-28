@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.name }}
+spec:
+  replicas: {{ .Values.replicas }}
+  selector:
+    matchLabels: { app: {{ .Values.name }} }
+  template:
+    metadata:
+      labels: { app: {{ .Values.name }} }
+    spec:
+      containers:
+        - name: projector
+          image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            - { name: KAFKA_BOOTSTRAP, value: {{ .Values.kafka.bootstrapServers | quote }} }
+            - { name: KAFKA_TOPIC, value: {{ .Values.kafka.topic | quote }} }
+            - { name: KAFKA_GROUP_ID, value: {{ .Values.kafka.groupId | quote }} }
+            - { name: READMODEL_KIND, value: {{ .Values.readModel.kind | quote }} }
+            - { name: ES_URL, value: {{ .Values.readModel.es.url | quote }} }
+            - { name: ES_INDEX, value: {{ .Values.readModel.es.index | quote }} }
+            - { name: CACHE_ENABLED, value: {{ .Values.cache.enabled | quote }} }
+            - { name: REDIS_HOST, value: {{ .Values.cache.redis.host | quote }} }
+            - { name: REDIS_PORT, value: {{ .Values.cache.redis.port | quote }} }
+            - { name: AUTHZ_ENABLED, value: {{ .Values.security.authzEnabled | quote }} }
+            - { name: AUDIT_TOPIC, value: {{ .Values.security.auditTopic | quote }} }
+          resources: {{- toYaml .Values.resources | nindent 12 }}
+

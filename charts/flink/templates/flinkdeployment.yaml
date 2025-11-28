@@ -1,0 +1,32 @@
+{{- if .Values.enabled }}
+apiVersion: flink.apache.org/v1beta1
+kind: FlinkDeployment
+metadata:
+  name: {{ .Values.name }}
+  namespace: {{ .Values.namespace }}
+spec:
+  image: {{ .Values.image }}
+  flinkVersion: v1_18
+  flinkConfiguration:
+    taskmanager.numberOfTaskSlots: "1"
+    metrics.reporters: prom
+    metrics.reporter.prom.class: org.apache.flink.metrics.prometheus.PrometheusReporter
+  serviceAccount: default
+  jobManager:
+    replicas: 1
+    resource:
+      memory: "1024m"
+      cpu: 0.5
+  taskManager:
+    replicas: {{ .Values.taskManager.replicas }}
+    resource:
+      memory: "1024m"
+      cpu: 0.5
+  job:
+    jarURI: {{ .Values.job.jarURI }}
+    args: {{ toYaml .Values.job.arguments | nindent 6 }}
+    upgradeMode: {{ .Values.job.upgradeMode }}
+    state: {{ .Values.job.state }}
+    restartPolicy: {{ .Values.job.restartPolicy }}
+{{- end }}
+

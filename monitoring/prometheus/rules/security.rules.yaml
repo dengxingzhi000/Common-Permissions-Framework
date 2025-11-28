@@ -1,0 +1,30 @@
+groups:
+  - name: security-rules
+    rules:
+      - alert: JWTAuthFailuresHigh
+        expr: sum(rate(http_server_requests_seconds_count{status="401"}[5m])) > 5
+        for: 5m
+        labels:
+          severity: page
+        annotations:
+          summary: "JWT 401 rate high"
+          desc: "HTTP 401 over 5m exceeds threshold."
+
+      - alert: MFABadRateHigh
+        expr: sum(rate(business_login_attempts_total{success="false",reason="mfa"}[5m])) > 3
+        for: 5m
+        labels:
+          severity: warn
+        annotations:
+          summary: "MFA failures high"
+          desc: "MFA failures over 5m exceeds threshold."
+
+      - alert: RefreshReuseDetected
+        expr: sum(rate(security_refresh_reuse_total[5m])) > 0
+        for: 1m
+        labels:
+          severity: page
+        annotations:
+          summary: "Refresh token reuse"
+          desc: "Detected refresh token reuse (rotation violation)."
+

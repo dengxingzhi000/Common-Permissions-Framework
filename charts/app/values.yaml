@@ -1,0 +1,183 @@
+nameOverride: ""
+fullnameOverride: ""
+
+image:
+  repository: your.registry.com/your-team/your-app
+  tag: "1.0.0"
+  pullPolicy: IfNotPresent
+  pullSecrets: []  # ["regcred"]
+
+replicaCount: 2
+
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+
+podAnnotations: {}
+podLabels: {}
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 10001
+  runAsGroup: 10001
+  fsGroup: 10001
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop: ["ALL"]
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 8080
+
+ingress:
+  enabled: false
+  className: "nginx"
+  annotations: {}
+  hosts:
+    - host: example.com
+      paths:
+        - path: /
+          pathType: ImplementationSpecific
+  tls: []
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+probes:
+  liveness:
+    path: /healthz
+    port: 8080
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    timeoutSeconds: 2
+    failureThreshold: 3
+  readiness:
+    path: /readyz
+    port: 8080
+    initialDelaySeconds: 5
+    periodSeconds: 5
+    timeoutSeconds: 2
+    failureThreshold: 3
+  startup: null
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: null
+  behavior: {}
+
+vpa:
+  enabled: false
+  mode: "Off"  # Off/Initial/Auto
+  updatePolicy:
+    updateMode: "Off"
+
+pdb:
+  enabled: true
+  minAvailable: 1
+
+networkPolicy:
+  enabled: true
+  allowIngressFromIngressController: true
+  allowEgressDNS: true
+  extraIngress: []
+  extraEgress: []
+
+prometheus:
+  serviceMonitor:
+    enabled: true
+    interval: 15s
+    scrapeTimeout: 10s
+    portName: http
+    path: /metrics
+    labels: {}
+  rules:
+    enabled: true
+    labels: {}
+    slo:
+      enabled: true
+      errorRate:
+        windowShort: 5m
+        windowLong: 1h
+      threshold: 1  # %
+
+istio:
+  enabled: true
+  sidecarInject: true
+  mTLS:
+    mode: STRICT  # PERMISSIVE/STRICT
+  zeroTrust:
+    enabled: true
+    allowSameNamespace: true
+    allowedPrincipals: []  # e.g. ["cluster.local/ns/your-ns/sa/backend-sa"]
+  gateway:
+    enabled: true
+    name: istio-ingressgateway
+    namespace: istio-system
+    selector:
+      istio: ingressgateway
+    hosts:
+      - example.com
+    tls:
+      enabled: false
+  traffic:
+    canary:
+      enabled: true
+      weight: 10   # percentage routed to canary when header not set
+      header:
+        name: x-canary
+        value: "1"
+    timeout: 3s
+    retries:
+      attempts: 2
+      perTryTimeout: 1s
+      retryOn: "5xx,connect-failure,reset"
+  circuitBreaker:
+    connectionPool:
+      http1MaxPendingRequests: 100
+      maxRequestsPerConnection: 100
+    outlierDetection:
+      consecutive5xx: 5
+      interval: 5s
+      baseEjectionTime: 30s
+      maxEjectionPercent: 50
+  rateLimit:
+    enabled: true
+    scope: gateway
+    gateway:
+      namespace: istio-system
+      selector:
+        istio: ingressgateway
+      rls:
+        host: ratelimit.istio-system.svc.cluster.local
+        port: 8081
+        domain: app-default
+      descriptor:
+        type: generic_key   # generic_key|header|remote_address
+        valueFrom: appName  # appName|hostHeader|header
+        headerName: ""      # when type=header
+  telemetry:
+    enabled: false
+    tracingProvider: otel  # must exist in mesh config
+    sampling: 10  # percent
+
+seata:
+  enabled: false
+  serverAddr: seata-server:8091
+  serviceGroup: default_tx_group

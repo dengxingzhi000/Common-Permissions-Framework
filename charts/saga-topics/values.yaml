@@ -1,0 +1,8 @@
+clusterName: kafka-cluster
+namespace: kafka
+domain: orders
+version: v1
+replicas: 3
+partitions: 6
+retentionMs: 604800000
+

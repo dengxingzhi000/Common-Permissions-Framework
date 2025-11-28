@@ -1,0 +1,46 @@
+# Domain config
+domain: orders
+version: v1
+namespace: app
+
+# Command service (write model)
+command:
+  image:
+    repository: your.registry.com/your-team/orders-command
+    tag: latest
+  fullnameOverride: orders-cmd
+  podLabels:
+    role: command
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits:   { cpu: 500m, memory: 512Mi }
+  probes:
+    liveness: { path: /healthz, port: 8080, initialDelaySeconds: 10, periodSeconds: 10, timeoutSeconds: 2, failureThreshold: 3 }
+    readiness: { path: /readyz, port: 8080, initialDelaySeconds: 5,  periodSeconds: 5,  timeoutSeconds: 2, failureThreshold: 3 }
+  env: []
+
+# Query service (read model API)
+query:
+  image:
+    repository: your.registry.com/your-team/orders-query
+    tag: latest
+  fullnameOverride: orders-query
+  podLabels:
+    role: query
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits:   { cpu: 500m, memory: 512Mi }
+  probes:
+    liveness: { path: /healthz, port: 8080, initialDelaySeconds: 10, periodSeconds: 10, timeoutSeconds: 2, failureThreshold: 3 }
+    readiness: { path: /readyz, port: 8080, initialDelaySeconds: 5,  periodSeconds: 5,  timeoutSeconds: 2, failureThreshold: 3 }
+  env: []
+
+# Kafka topics (via Strimzi KafkaTopic)
+topicsEnabled: true
+replicas: 3
+partitions: 6
+retentionMs:
+  events: 1209600000   # 14d
+  snapshots: 7776000000 # 90d
+  audit: 1209600000     # 14d
+

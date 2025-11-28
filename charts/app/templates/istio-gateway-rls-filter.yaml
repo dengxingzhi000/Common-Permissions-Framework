@@ -1,0 +1,36 @@
+{{- if and .Values.istio.enabled .Values.istio.rateLimit.enabled (eq .Values.istio.rateLimit.scope "gateway") }}
+apiVersion: networking.istio.io/v1alpha3
+kind: EnvoyFilter
+metadata:
+  name: {{ include "app.fullname" . }}-gw-rls-filter
+  namespace: {{ .Values.istio.rateLimit.gateway.namespace }}
+spec:
+  workloadSelector:
+    labels: {{- toYaml .Values.istio.rateLimit.gateway.selector | nindent 6 }}
+  configPatches:
+    # Insert global rate limit HTTP filter before router
+    - applyTo: HTTP_FILTER
+      match:
+        context: GATEWAY
+        listener:
+          filterChain:
+            filter:
+              name: envoy.filters.network.http_connection_manager
+              subFilter:
+                name: envoy.filters.http.router
+      patch:
+        operation: INSERT_BEFORE
+        value:
+          name: envoy.filters.http.ratelimit
+          typed_config:
+            "@type": type.googleapis.com/envoy.extensions.filters.http.ratelimit.v3.RateLimit
+            domain: {{ .Values.istio.rateLimit.gateway.rls.domain | quote }}
+            enable_x_ratelimit_headers: DRAFT_VERSION_03
+            rate_limit_service:
+              grpc_service:
+                envoy_grpc:
+                  cluster_name: rate_limit_cluster
+                timeout: 1s
+              transport_api_version: V3
+{{- end }}
+

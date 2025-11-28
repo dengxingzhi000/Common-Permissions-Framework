@@ -1,0 +1,28 @@
+{{- if .Values.prometheus.rules.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: {{ include "app.fullname" . }}-rules
+  labels: {{- toYaml .Values.prometheus.rules.labels | nindent 4 }}
+spec:
+  groups:
+    - name: {{ include "app.fullname" . }}-slo
+      rules:
+        {{- if .Values.prometheus.rules.slo.enabled }}
+        - alert: HighErrorRateShort
+          expr: sum(rate(http_requests_total{job="{{ include "app.fullname" . }}",status=~"5.."}[{{ .Values.prometheus.rules.slo.windowShort }}])) /
+                sum(rate(http_requests_total{job="{{ include "app.fullname" . }}"}[{{ .Values.prometheus.rules.slo.windowShort }}])) * 100 > {{ .Values.prometheus.rules.slo.threshold }}
+          for: {{ .Values.prometheus.rules.slo.windowShort }}
+          labels: {severity: page}
+          annotations:
+            summary: High 5xx error rate (short window)
+        - alert: HighErrorRateLong
+          expr: sum(rate(http_requests_total{job="{{ include "app.fullname" . }}",status=~"5.."}[{{ .Values.prometheus.rules.slo.windowLong }}])) /
+                sum(rate(http_requests_total{job="{{ include "app.fullname" . }}"}[{{ .Values.prometheus.rules.slo.windowLong }}])) * 100 > {{ .Values.prometheus.rules.slo.threshold }}
+          for: {{ .Values.prometheus.rules.slo.windowLong }}
+          labels: {severity: ticket}
+          annotations:
+            summary: High 5xx error rate (long window)
+        {{- end }}
+{{- end }}
+

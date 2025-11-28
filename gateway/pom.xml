@@ -49,7 +49,7 @@
 
         <dependency>
             <groupId>io.github.openfeign</groupId>
-            <artifactId>feign-httpclient</artifactId>
+            <artifactId>feign-okhttp</artifactId>
         </dependency>
 
         <!-- Spring Boot Web Flux -->
@@ -74,6 +74,18 @@
         <dependency>
             <groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-starter-openfeign</artifactId>
+        </dependency>
+
+        <!-- Dubbo consumer for high-frequency internal RPC -->
+        <dependency>
+            <groupId>org.apache.dubbo</groupId>
+            <artifactId>dubbo-spring-boot-starter</artifactId>
+            <version>3.2.10</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.dubbo</groupId>
+            <artifactId>dubbo-registry-nacos</artifactId>
+            <version>3.2.10</version>
         </dependency>
 
         <dependency>

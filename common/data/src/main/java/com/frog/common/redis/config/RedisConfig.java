@@ -4,6 +4,8 @@ import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.PropertyAccessor;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.jsontype.impl.LaissezFaireSubTypeValidator;
+import com.frog.common.cache.CacheInvalidationListener;
+import com.frog.common.cache.spring.TwoLevelCacheInvalidationListener;
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -11,9 +13,15 @@ import org.springframework.data.redis.cache.RedisCacheConfiguration;
 import org.springframework.data.redis.cache.RedisCacheManager;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.listener.PatternTopic;
+import org.springframework.data.redis.listener.RedisMessageListenerContainer;
+import org.springframework.data.redis.listener.adapter.MessageListenerAdapter;
 import org.springframework.data.redis.serializer.Jackson2JsonRedisSerializer;
 import org.springframework.data.redis.serializer.RedisSerializationContext;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
+import org.springframework.cache.CacheManager;
+import org.springframework.context.annotation.Primary;
+import com.frog.common.cache.spring.TwoLevelCacheManager;
 
 import java.time.Duration;
 import java.util.HashMap;
@@ -29,6 +37,9 @@ import java.util.Map;
 @Configuration
 @EnableCaching
 public class RedisConfig {
+    private static final String INVALIDATION_CHANNEL = "cache:invalidation";
+    private static final String TWOLEVEL_INVALIDATION_CHANNEL = "cache:invalidation:twolevel";
+
     @Bean
     public RedisTemplate<String, Object> redisTemplate(RedisConnectionFactory factory) {
         RedisTemplate<String, Object> template = new RedisTemplate<>();
@@ -54,6 +65,42 @@ public class RedisConfig {
 
         template.afterPropertiesSet();
         return template;
+    }
+
+    @Bean
+    public RedisMessageListenerContainer redisMessageListenerContainer(
+            RedisConnectionFactory connectionFactory,
+            CacheInvalidationListener listener) {
+        RedisMessageListenerContainer container = new RedisMessageListenerContainer();
+        container.setConnectionFactory(connectionFactory);
+        container.addMessageListener(new MessageListenerAdapter(listener), new PatternTopic(INVALIDATION_CHANNEL));
+        return container;
+    }
+
+    @Bean
+    public RedisMessageListenerContainer twoLevelCacheListenerContainer(
+            RedisConnectionFactory connectionFactory,
+            TwoLevelCacheInvalidationListener twoLevelListener) {
+        RedisMessageListenerContainer container = new RedisMessageListenerContainer();
+        container.setConnectionFactory(connectionFactory);
+        container.addMessageListener(new MessageListenerAdapter(twoLevelListener), new PatternTopic(TWOLEVEL_INVALIDATION_CHANNEL));
+        return container;
+    }
+
+    @Bean
+    @Primary
+    public CacheManager twoLevelCacheManager(RedisTemplate<String, Object> redisTemplate) {
+        Duration defaultTtl = Duration.ofHours(1);
+        Map<String, Duration> ttls = new HashMap<>();
+        ttls.put("user", Duration.ofMinutes(30));
+        ttls.put("userInfo", Duration.ofMinutes(30));
+        ttls.put("userRoles", Duration.ofHours(1));
+        ttls.put("userPermissions", Duration.ofHours(1));
+        ttls.put("permissionTree", Duration.ofHours(2));
+        ttls.put("roles", Duration.ofHours(1));
+        ttls.put("role", Duration.ofHours(1));
+        long localMaxSize = 10_000L;
+        return new TwoLevelCacheManager(redisTemplate, defaultTtl, ttls, localMaxSize);
     }
 
     @Bean
