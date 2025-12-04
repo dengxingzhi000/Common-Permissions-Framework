@@ -1,0 +1,21 @@
+{
+  "type": "object",
+  "required": ["ts", "req_id", "user_id", "client_id", "action", "decision"],
+  "properties": {
+    "ts": {"type": "string", "format": "date-time"},
+    "req_id": {"type": "string"},
+    "user_id": {"type": "string"},
+    "client_id": {"type": "string"},
+    "amr": {"type": "string"},
+    "roles": {"type": "array", "items": {"type": "string"}},
+    "perms": {"type": "array", "items": {"type": "string"}},
+    "device_id": {"type": "string"},
+    "ip": {"type": "string"},
+    "resource": {"type": "string"},
+    "action": {"type": "string"},
+    "decision": {"type": "string", "enum": ["allow", "deny"]},
+    "reason": {"type": "string"},
+    "latency_ms": {"type": "integer"}
+  }
+}
+

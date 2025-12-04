@@ -1,0 +1,7 @@
+apiVersion: v2
+name: projector
+description: CQRS projector (Kafka -> Read Model/Cache)
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+

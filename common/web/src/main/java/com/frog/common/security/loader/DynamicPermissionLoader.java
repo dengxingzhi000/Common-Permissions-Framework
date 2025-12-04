@@ -1,15 +1,22 @@
 package com.frog.common.security.loader;
 
+import com.frog.common.cache.MultiLevelCache;
 import com.frog.common.feign.client.SysPermissionServiceClient;
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.CacheManager;
+import org.springframework.context.ApplicationEvent;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
+
 /**
  * 动态权限加载服务
  * 支持权限热更新，无需重启应用
@@ -25,12 +32,39 @@ public class DynamicPermissionLoader {
     private final SysPermissionServiceClient permissionServiceClient;
     private final CacheManager cacheManager;
     private final ApplicationEventPublisher eventPublisher;
+    private final MultiLevelCache multiLevelCache;
 
     // 内存缓存：URL -> 所需权限列表
     private final Map<String, Set<String>> urlPermissionCache = new ConcurrentHashMap<>();
 
     // 权限版本号（用于检测变更）
-    private volatile long permissionVersion = 0L;
+    private final AtomicLong permissionVersion = new AtomicLong(0L);
+
+    private static final String PERM_MAPPING_CACHE_KEY = "dynamic:permission:mapping";
+    private static final Duration PERM_MAPPING_TTL = Duration.ofMinutes(5);
+
+    @PostConstruct
+    public void initFromCache() {
+        try {
+            @SuppressWarnings("unchecked")
+            Map<String, Set<String>> cached = multiLevelCache.get(PERM_MAPPING_CACHE_KEY, Map.class);
+            if (cached != null && !cached.isEmpty()) {
+                urlPermissionCache.clear();
+                Map<String, Set<String>> normalized = new HashMap<>();
+                for (Map.Entry<String, Set<String>> e : cached.entrySet()) {
+                    normalized.put(e.getKey(), new HashSet<>(e.getValue()));
+                }
+                urlPermissionCache.putAll(normalized);
+                
+                // 初始化版本号
+                permissionVersion.set(1L);
+                log.info("Initialized dynamic permission cache from MultiLevelCache, size={}",
+                        urlPermissionCache.size());
+            }
+        } catch (Exception e) {
+            log.warn("Init from MultiLevelCache failed", e);
+        }
+    }
 
     /**
      * 初始化加载权限配置
@@ -61,13 +95,16 @@ public class DynamicPermissionLoader {
             urlPermissionCache.clear();
             urlPermissionCache.putAll(newCache);
 
-            permissionVersion++;
+            // 持久化到多级缓存（供多实例共享，冷启动加速）
+            multiLevelCache.set(PERM_MAPPING_CACHE_KEY, newCache, PERM_MAPPING_TTL);
+
+            permissionVersion.incrementAndGet();
 
             log.info("Loaded {} API permission mappings, version: {}",
-                    newCache.size(), permissionVersion);
+                    newCache.size(), permissionVersion.get());
 
             // 发布权限更新事件
-            eventPublisher.publishEvent(new PermissionRefreshEvent(this, permissionVersion));
+            eventPublisher.publishEvent(new PermissionRefreshEvent(this, permissionVersion.get()));
 
         } catch (Exception e) {
             log.error("Failed to load permissions", e);
@@ -258,7 +295,7 @@ public class DynamicPermissionLoader {
      * 获取权限版本号
      */
     public long getPermissionVersion() {
-        return permissionVersion;
+        return permissionVersion.get();
     }
 
     /**
@@ -266,7 +303,7 @@ public class DynamicPermissionLoader {
      */
     public Map<String, Object> getCacheStats() {
         Map<String, Object> stats = new HashMap<>();
-        stats.put("version", permissionVersion);
+        stats.put("version", permissionVersion.get());
         stats.put("cachedMappings", urlPermissionCache.size());
         stats.put("memorySize", estimateMemorySize());
         return stats;
@@ -287,16 +324,13 @@ public class DynamicPermissionLoader {
     /**
      * 权限刷新事件
      */
-    public static class PermissionRefreshEvent extends org.springframework.context.ApplicationEvent {
+    @Getter
+    public static class PermissionRefreshEvent extends ApplicationEvent {
         private final long version;
 
         public PermissionRefreshEvent(Object source, long version) {
             super(source);
             this.version = version;
-        }
-
-        public long getVersion() {
-            return version;
         }
     }
 }

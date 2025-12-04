@@ -1,0 +1,10 @@
+routes:
+  - path: /api/auth/**
+    aud: auth-service
+  - path: /api/system/**
+    aud: system-service
+  - path: /api/files/**
+    aud: file-service
+policy:
+  enforce: true
+

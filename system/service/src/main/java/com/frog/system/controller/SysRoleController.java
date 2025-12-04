@@ -36,6 +36,7 @@ public class SysRoleController {
                                                  @RequestParam(defaultValue = "10") Integer size,
                                                  @RequestParam(required = false) String roleName) {
         Page<RoleDTO> result = roleService.listRoles(page, size, roleName);
+
         return ApiResponse.success(PageResult.of(result));
     }
 
@@ -46,6 +47,7 @@ public class SysRoleController {
     @PreAuthorize("hasAuthority('system:role:list')")
     public ApiResponse<List<RoleDTO>> listAll() {
         List<RoleDTO> roles = roleService.listAllRoles();
+
         return ApiResponse.success(roles);
     }
 
@@ -61,6 +63,7 @@ public class SysRoleController {
     )
     public ApiResponse<Void> add(@Validated @RequestBody RoleDTO roleDTO) {
         roleService.addRole(roleDTO);
+
         return ApiResponse.success();
     }
 
@@ -78,6 +81,7 @@ public class SysRoleController {
                                @Validated @RequestBody RoleDTO roleDTO) {
         roleDTO.setId(id);
         roleService.updateRole(roleDTO);
+
         return ApiResponse.success();
     }
 
@@ -93,6 +97,7 @@ public class SysRoleController {
     )
     public ApiResponse<Void> delete(@PathVariable UUID id) {
         roleService.deleteRole(id);
+
         return ApiResponse.success();
     }
 
@@ -109,6 +114,7 @@ public class SysRoleController {
     public ApiResponse<Void> grantPermissions(@PathVariable UUID id,
                                          @RequestBody List<UUID> permissionIds) {
         roleService.grantPermissions(id, permissionIds);
+
         return ApiResponse.success();
     }
 
@@ -119,6 +125,7 @@ public class SysRoleController {
     @PreAuthorize("hasAuthority('system:role:list')")
     public ApiResponse<List<UUID>> getRolePermissions(@PathVariable UUID id) {
         List<UUID> permissionIds = roleService.getRolePermissionIds(id);
+
         return ApiResponse.success(permissionIds);
     }
 }

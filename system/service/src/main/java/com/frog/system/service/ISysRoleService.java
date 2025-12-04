@@ -17,6 +17,7 @@ import java.util.UUID;
  * @since 2025-10-15
  */
 public interface ISysRoleService extends IService<SysRole> {
+
     Page<RoleDTO> listRoles(Integer pageNum, Integer pageSize, String roleName);
 
     List<RoleDTO> listAllRoles();

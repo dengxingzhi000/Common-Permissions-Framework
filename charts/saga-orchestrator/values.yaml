@@ -1,0 +1,35 @@
+name: orders-saga
+image:
+  repository: your.registry.com/your-team/saga-orchestrator
+  tag: latest
+  pullPolicy: IfNotPresent
+replicas: 1
+resources:
+  requests: { cpu: 100m, memory: 256Mi }
+  limits:   { cpu: 500m, memory: 512Mi }
+kafka:
+  bootstrapServers: kafka-cluster-kafka-bootstrap.kafka:9092
+  commandTopic: orders.saga.command.v1
+  replyTopic: orders.saga.reply.v1
+  statusTopic: orders.saga.status.v1
+definition:
+  strategy: orchestration  # orchestration|choreography
+  timeoutSeconds: 120
+  steps:
+    - name: reserve-inventory
+      command: { topic: inventory.command.v1, type: Reserve }
+      compensate: { topic: inventory.command.v1, type: Release }
+      timeoutSeconds: 20
+    - name: authorize-payment
+      command: { topic: payments.command.v1, type: Authorize }
+      compensate: { topic: payments.command.v1, type: Cancel }
+      timeoutSeconds: 20
+    - name: create-shipment
+      command: { topic: logistics.command.v1, type: CreateShipment }
+      compensate: { topic: logistics.command.v1, type: CancelShipment }
+      timeoutSeconds: 40
+telemetry:
+  tracing: true
+  metrics: true
+  auditTopic: audit.logs.v1
+

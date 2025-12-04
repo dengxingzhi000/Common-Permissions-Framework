@@ -37,6 +37,7 @@ public enum ResultCode {
     USER_EXIST(1006, "用户已存在"),
     USER_CANNOT_DELETE_ADMIN(1007, "不能删除管理员用户"),
     USER_CANNOT_DELETE_SELF(1008, "不能删除自己"),
+    USER_NEED_LOGIN(1009, "需要登录"),
 
 
     TOKEN_INVALID(1101, "Token无效"),

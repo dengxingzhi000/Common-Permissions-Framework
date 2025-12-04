@@ -1,0 +1,7 @@
+apiVersion: v2
+name: kafka
+description: Kafka infra via Strimzi (cluster optional) + topics (base/retry/dlq)
+type: application
+version: 0.1.0
+appVersion: "3.7"
+

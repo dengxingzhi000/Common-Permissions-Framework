@@ -1,0 +1,23 @@
+{{- if and .Values.istio.enabled .Values.istio.zeroTrust.enabled }}
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: {{ include "app.fullname" . }}-allow
+spec:
+  selector:
+    matchLabels: {{- include "app.selectorLabels" . | nindent 6 }}
+  action: ALLOW
+  rules:
+    {{- if .Values.istio.zeroTrust.allowSameNamespace }}
+    - from:
+        - source:
+            namespaces: ["{{ .Release.Namespace }}"]
+    {{- end }}
+    {{- with .Values.istio.zeroTrust.allowedPrincipals }}
+    - from:
+        - source:
+            principals:
+              {{- toYaml . | nindent 14 }}
+    {{- end }}
+{{- end }}
+

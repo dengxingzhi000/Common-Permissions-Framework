@@ -1,0 +1,15 @@
+apiVersion: v2
+name: cqrs
+description: CQRS umbrella chart (command/query via app chart) + Kafka topics
+type: application
+version: 0.1.0
+dependencies:
+  - name: app
+    version: 0.1.0
+    repository: "file://../app"
+    alias: command
+  - name: app
+    version: 0.1.0
+    repository: "file://../app"
+    alias: query
+

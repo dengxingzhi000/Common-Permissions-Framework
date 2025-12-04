@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.name }}
+spec:
+  replicas: {{ .Values.replicas }}
+  selector:
+    matchLabels: { app: {{ .Values.name }} }
+  template:
+    metadata:
+      labels: { app: {{ .Values.name }} }
+    spec:
+      containers:
+        - name: saga
+          image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            - { name: KAFKA_BOOTSTRAP, value: {{ .Values.kafka.bootstrapServers | quote }} }
+            - { name: SAGA_COMMAND_TOPIC, value: {{ .Values.kafka.commandTopic | quote }} }
+            - { name: SAGA_REPLY_TOPIC,   value: {{ .Values.kafka.replyTopic | quote }} }
+            - { name: SAGA_STATUS_TOPIC,  value: {{ .Values.kafka.statusTopic | quote }} }
+            - { name: AUDIT_TOPIC,        value: {{ .Values.telemetry.auditTopic | quote }} }
+            - { name: TRACING_ENABLED,    value: {{ .Values.telemetry.tracing | quote }} }
+            - { name: METRICS_ENABLED,    value: {{ .Values.telemetry.metrics | quote }} }
+          volumeMounts:
+            - name: saga-def
+              mountPath: /etc/saga/saga.yaml
+              subPath: saga.yaml
+          resources: {{- toYaml .Values.resources | nindent 12 }}
+      volumes:
+        - name: saga-def
+          configMap: { name: {{ .Values.name }}-saga }
+

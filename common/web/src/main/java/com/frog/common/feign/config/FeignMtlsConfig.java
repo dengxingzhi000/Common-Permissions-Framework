@@ -7,6 +7,7 @@ import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.ClassPathResource;
@@ -22,14 +23,11 @@ import java.security.cert.X509Certificate;
 import java.util.Date;
 
 /**
- *
- *
- * @author Deng
- * createData 2025/10/24 16:48
- * @version 1.0
+ * 兼容性配置：仅当应用中不存在 Feign Client Bean 时生效，避免与 gateway 的统一配置冲突。
  */
 @Slf4j
 @Configuration
+@ConditionalOnMissingBean(Client.class)
 public class FeignMtlsConfig {
 
     @Value("${security.mtls.keystore-path}")
@@ -46,19 +44,16 @@ public class FeignMtlsConfig {
 
     @Bean
     public Client feignClient() throws Exception {
-        // 加载客户端证书
         KeyStore keyStore = KeyStore.getInstance("PKCS12");
         try (InputStream is = new ClassPathResource(keystorePath).getInputStream()) {
             keyStore.load(is, keystorePassword.toCharArray());
         }
 
-        // 加载信任证书
         KeyStore trustStore = KeyStore.getInstance("PKCS12");
         try (InputStream is = new ClassPathResource(truststorePath).getInputStream()) {
             trustStore.load(is, truststorePassword.toCharArray());
         }
 
-        // 构建SSLContext
         KeyManagerFactory kmf = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
         kmf.init(keyStore, keystorePassword.toCharArray());
 
@@ -68,7 +63,6 @@ public class FeignMtlsConfig {
         SSLContext sslContext = SSLContext.getInstance("TLS");
         sslContext.init(kmf.getKeyManagers(), tmf.getTrustManagers(), new SecureRandom());
 
-        // 配置SSL
         SSLConnectionSocketFactory socketFactory = new SSLConnectionSocketFactory(
                 sslContext,
                 new String[]{"TLSv1.3", "TLSv1.2"},
@@ -83,9 +77,6 @@ public class FeignMtlsConfig {
         return new ApacheHttpClient(httpClient);
     }
 
-    /**
-     * 证书自动续期检查
-     */
     @Scheduled(cron = "0 0 2 * * ?")
     public void checkCertificateExpiry() throws Exception {
         KeyStore keyStore = KeyStore.getInstance("PKCS12");
@@ -101,7 +92,6 @@ public class FeignMtlsConfig {
 
         if (daysUntilExpiry < 30) {
             log.warn("证书即将过期! 剩余天数: {}", daysUntilExpiry);
-            // TODO: 发送告警通知
         }
     }
 }

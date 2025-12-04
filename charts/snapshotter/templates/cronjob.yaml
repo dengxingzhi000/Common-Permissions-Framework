@@ -1,0 +1,22 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ .Values.name }}
+spec:
+  schedule: {{ .Values.schedule | quote }}
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: snapshotter
+              image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
+              imagePullPolicy: {{ .Values.image.pullPolicy }}
+              env:
+                - { name: KAFKA_BOOTSTRAP, value: {{ .Values.kafka.bootstrapServers | quote }} }
+                - { name: EVENTS_TOPIC, value: {{ .Values.kafka.eventsTopic | quote }} }
+                - { name: SNAPSHOTS_TOPIC, value: {{ .Values.kafka.snapshotsTopic | quote }} }
+                - { name: GROUP_ID, value: {{ .Values.kafka.groupId | quote }} }
+              resources: {{- toYaml .Values.resources | nindent 14 }}
+

@@ -1,0 +1,12 @@
+{{- if and .Values.istio.enabled .Values.istio.mTLS.mode }}
+apiVersion: security.istio.io/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: {{ include "app.fullname" . }}-mtls
+spec:
+  selector:
+    matchLabels: {{- include "app.selectorLabels" . | nindent 6 }}
+  mtls:
+    mode: {{ .Values.istio.mTLS.mode }}
+{{- end }}
+

@@ -17,6 +17,7 @@ import java.util.UUID;
  * @since 2025-10-30
  */
 public interface ISysPermissionApprovalService extends IService<SysPermissionApproval> {
+
     UUID submitApproval(ApprovalDTO dto);
 
     void processApproval(UUID approvalId, ApprovalProcessDTO dto);

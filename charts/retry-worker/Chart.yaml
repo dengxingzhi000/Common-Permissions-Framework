@@ -1,0 +1,7 @@
+apiVersion: v2
+name: retry-worker
+description: Generic Kafka retry -> base republisher (image-provided)
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+

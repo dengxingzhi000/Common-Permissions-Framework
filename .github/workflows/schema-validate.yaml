@@ -1,0 +1,30 @@
+name: Schema Validate
+
+on:
+  pull_request:
+    paths:
+      - 'eda/schemas/**'
+      - 'eda/examples/**'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install ajv-cli
+        run: npm i -g ajv-cli@5
+      - name: Validate schemas syntax
+        run: |
+          ajv compile -s eda/schemas/*.json
+      - name: Validate example payloads
+        run: |
+          for f in eda/examples/*.json; do
+            base=$(basename "$f")
+            schema="eda/schemas/${base}"
+            if [ -f "$schema" ]; then
+              ajv validate -s "$schema" -d "$f"; fi
+          done
+

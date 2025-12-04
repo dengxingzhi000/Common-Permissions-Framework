@@ -1,0 +1,29 @@
+{
+  "title": "Security Overview",
+  "timezone": "browser",
+  "schemaVersion": 36,
+  "panels": [
+    {
+      "type": "graph",
+      "title": "JWT 401 rate",
+      "targets": [
+        { "expr": "sum(rate(http_server_requests_seconds_count{status=\"401\"}[5m]))" }
+      ]
+    },
+    {
+      "type": "graph",
+      "title": "MFA failure rate",
+      "targets": [
+        { "expr": "sum(rate(business_login_attempts_total{success=\"false\",reason=\"mfa\"}[5m]))" }
+      ]
+    },
+    {
+      "type": "graph",
+      "title": "Refresh reuse",
+      "targets": [
+        { "expr": "sum(rate(security_refresh_reuse_total[5m]))" }
+      ]
+    }
+  ]
+}
+

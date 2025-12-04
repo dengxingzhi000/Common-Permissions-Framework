@@ -264,8 +264,6 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
 
         user.setPassword(passwordEncoder.encode(newPassword));
         user.setForceChangePassword(1); // 强制修改密码
-        user.setUpdateBy(SecurityUtils.getCurrentUserUuid().orElse(null));
-        user.setUpdateTime(LocalDateTime.now());
 
         userMapper.updateById(user);
 

@@ -3,14 +3,13 @@ package com.frog.test;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.test.context.junit.jupiter.SpringExtension;
-
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 /**
  * 基础测试类示例
@@ -22,9 +21,23 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @ImportAutoConfiguration
 public class FrogTest {
 
+    @Autowired
+    PasswordEncoder passwordEncoder;
+
     @Test
     public void testExample() {
-        assertTrue(true, "这是一个示例测试");
+        System.out.println("passwordEncoder = " +
+                passwordEncoder.matches("D123456", "$2a$10$IksNdaP/LeACZS9H/FATbOOvHVSieAuYurijkhZhJl1r.b14.IUDC"));
+
+        // 查看加密后的数据
+        String rawPassword = "Greenplate3$$!";
+        String encodedPassword = passwordEncoder.encode(rawPassword);
+        System.out.println("Raw password: " + rawPassword);
+        System.out.println("Encoded password: " + encodedPassword);
+        
+        // 验证加密后的密码是否能正确匹配原始密码
+        boolean isMatch = passwordEncoder.matches(rawPassword, encodedPassword);
+        System.out.println("Password match result: " + isMatch);
     }
 
     @Test
@@ -45,6 +58,11 @@ public class FrogTest {
         @Bean
         public MeterRegistry meterRegistry() {
             return new SimpleMeterRegistry();
+        }
+        
+        @Bean
+        public PasswordEncoder passwordEncoder() {
+            return new BCryptPasswordEncoder();
         }
     }
 }

@@ -4,6 +4,7 @@ import com.frog.common.security.filter.JwtAuthenticationFilter;
 import com.frog.common.security.filter.SqlInjectionFilter;
 import com.frog.common.security.handler.JwtAccessDeniedHandler;
 import com.frog.common.security.handler.JwtAuthenticationEntryPoint;
+import com.frog.common.security.stepup.StepUpFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -18,6 +19,7 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.authentication.logout.LogoutFilter;
+import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -44,6 +46,7 @@ public class SecurityConfig {
     private final SqlInjectionFilter sqlInjectionFilter;
     private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
     private final JwtAccessDeniedHandler jwtAccessDeniedHandler;
+    private final StepUpFilter stepUpFilter;
 
     /**
      * Spring Security 主过滤器链
@@ -91,7 +94,7 @@ public class SecurityConfig {
                                         "frame-ancestors 'none'"))
                         // Referrer-Policy
                         .referrerPolicy(referrer -> referrer
-                                .policy(org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN)))
+                                .policy(ReferrerPolicyHeaderWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN)))
 
                 // 6️⃣ 授权规则
                 .authorizeHttpRequests(auth -> auth
@@ -117,7 +120,8 @@ public class SecurityConfig {
 
                 // 8️⃣ 添加自定义过滤器
                 .addFilterBefore(sqlInjectionFilter, LogoutFilter.class)
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterAfter(stepUpFilter, JwtAuthenticationFilter.class);
 
         return http.build();
     }
@@ -140,13 +144,15 @@ public class SecurityConfig {
         configuration.setExposedHeaders(Arrays.asList(
                 "Authorization",
                 "X-Total-Count",
-                "X-Request-ID"
+                "X-Request-ID",
+                "X-StepUp-Required"
         ));
         configuration.setAllowCredentials(true);
         configuration.setMaxAge(3600L);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
+
         return source;
     }
 }

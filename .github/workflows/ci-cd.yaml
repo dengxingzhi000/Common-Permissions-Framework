@@ -1,0 +1,398 @@
+name: CI-CD
+
+on:
+  pull_request:
+  push:
+    branches: [ main ]
+    tags: [ 'v*.*.*' ]
+  release:
+    types: [published]
+
+env:
+  REGISTRY: ${{ secrets.REGISTRY }}
+  REGISTRY_USERNAME: ${{ secrets.REGISTRY_USERNAME }}
+  REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
+  IMAGE_NAME: ${{ secrets.IMAGE_NAME || 'your-team/your-app' }}
+  CHART_PATH: charts/app
+  CHART_PATH_CQRS: charts/cqrs
+  CHART_PATH_PROJECTOR: charts/projector
+  CHART_PATH_SNAPSHOTTER: charts/snapshotter
+  CHART_PATH_SEATA: charts/seata
+  CHART_PATH_SAGA_ORCH: charts/saga-orchestrator
+  CHART_PATH_SAGA_TOPICS: charts/saga-topics
+  IMAGE_NAME_COMMAND: ${{ secrets.IMAGE_NAME_COMMAND || 'your-team/orders-command' }}
+  IMAGE_NAME_QUERY: ${{ secrets.IMAGE_NAME_QUERY || 'your-team/orders-query' }}
+  IMAGE_NAME_PROJECTOR: ${{ secrets.IMAGE_NAME_PROJECTOR || 'your-team/orders-projector' }}
+  IMAGE_NAME_SNAPSHOTTER: ${{ secrets.IMAGE_NAME_SNAPSHOTTER || 'your-team/orders-snapshotter' }}
+
+jobs:
+  lint-test-scan:
+    name: Lint, Test, Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Node (if JS project)
+        if: hashFiles('package.json') != ''
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Set up Java (if Maven project)
+        if: hashFiles('pom.xml') != ''
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+      - name: Run tests (auto-detect)
+        run: |
+          set -e
+          if [ -f package.json ]; then npm ci && npm test; fi
+          if [ -f pom.xml ]; then mvn -B -ntp -DskipITs=true test; fi
+          if [ -f go.mod ]; then go test ./...; fi
+          if [ -f requirements.txt ]; then pip install -r requirements.txt && pytest -q || true; fi
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=sha
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+            type=raw,value=latest,enable={{is_default_branch}}
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Login to registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ env.REGISTRY_USERNAME }}
+          password: ${{ env.REGISTRY_PASSWORD }}
+      - name: Build image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          push: false
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+      - name: Trivy FS scan (vulns)
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: 'fs'
+          format: 'sarif'
+          output: 'trivy-fs.sarif'
+          severity: 'CRITICAL,HIGH'
+      - name: Upload Trivy FS results
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'trivy-fs.sarif'
+      - name: Trivy Image scan
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: ${{ fromJSON(steps.meta.outputs.json).tags[0] }}
+          format: 'sarif'
+          output: 'trivy-image.sarif'
+          severity: 'CRITICAL,HIGH'
+      - name: Upload Trivy Image results
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'trivy-image.sarif'
+      - name: SonarQube Scan (optional)
+        if: ${{ secrets.SONAR_HOST_URL != '' && secrets.SONAR_TOKEN != '' }}
+        uses: SonarSource/sonarqube-scan-action@v2.3
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+
+  build-push:
+    name: Build & Push Image
+    needs: [lint-test-scan]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=sha
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+            type=raw,value=latest,enable={{is_default_branch}}
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ env.REGISTRY_USERNAME }}
+          password: ${{ env.REGISTRY_PASSWORD }}
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+      - name: Set IMAGE_TAG
+        id: tag
+        run: echo "IMAGE_TAG=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.revision'] }}" >> $GITHUB_OUTPUT
+
+  deploy-dev:
+    name: Deploy dev
+    needs: [build-push]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: dev
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-kubectl@v4
+      - uses: azure/setup-helm@v4
+      - name: Configure kubeconfig
+        run: |
+          echo "${KUBE_CONFIG}" | base64 -d > kubeconfig
+        env:
+          KUBE_CONFIG: ${{ secrets.KUBE_CONFIG_DEV }}
+      - name: Helm upgrade --install (atomic)
+        env:
+          KUBECONFIG: ${{ github.workspace }}/kubeconfig
+        run: |
+          helm upgrade --install ${{ secrets.RELEASE_NAME_DEV }} ${{ env.CHART_PATH }} \
+            --namespace ${{ secrets.NAMESPACE_DEV }} --create-namespace \
+            -f ${{ env.CHART_PATH }}/values.yaml -f ${{ env.CHART_PATH }}/values-dev.yaml \
+            --set image.repository=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }} \
+            --set image.tag=${{ github.sha }} \
+            --atomic --timeout 10m
+      - name: Helm deps (CQRS)
+        if: ${{ secrets.ENABLE_CQRS == 'true' }}
+        run: helm dependency update ${{ env.CHART_PATH_CQRS }}
+      - name: Deploy CQRS (command/query)
+        if: ${{ secrets.ENABLE_CQRS == 'true' }}
+        env:
+          KUBECONFIG: ${{ github.workspace }}/kubeconfig
+        run: |
+          helm upgrade --install ${{ secrets.RELEASE_NAME_CQRS_DEV }} ${{ env.CHART_PATH_CQRS }} \
+            --namespace ${{ secrets.NAMESPACE_DEV }} --create-namespace \
+            -f ${{ env.CHART_PATH_CQRS }}/values.yaml -f ${{ env.CHART_PATH_CQRS }}/values-dev.yaml \
+            --set command.image.repository=${{ env.REGISTRY }}/${{ env.IMAGE_NAME_COMMAND }} \
+            --set command.image.tag=${{ github.sha }} \
+            --set query.image.repository=${{ env.REGISTRY }}/${{ env.IMAGE_NAME_QUERY }} \
+            --set query.image.tag=${{ github.sha }} \
+            --atomic --timeout 10m
+      - name: Deploy Projector (optional)
+        if: ${{ secrets.ENABLE_PROJECTOR == 'true' }}
+        env:
+          KUBECONFIG: ${{ github.workspace }}/kubeconfig
+        run: |
+          helm upgrade --install ${{ secrets.RELEASE_NAME_PROJECTOR_DEV }} ${{ env.CHART_PATH_PROJECTOR }} \
+            --namespace ${{ secrets.NAMESPACE_DEV }} --create-namespace \
+            --set image.repository=${{ env.REGISTRY }}/${{ env.IMAGE_NAME_PROJECTOR }} \
+            --set image.tag=${{ github.sha }} \
+            --atomic --timeout 10m
+      - name: Deploy Snapshotter (optional)
+        if: ${{ secrets.ENABLE_SNAPSHOTTER == 'true' }}
+        env:
+          KUBECONFIG: ${{ github.workspace }}/kubeconfig
+        run: |
+          helm upgrade --install ${{ secrets.RELEASE_NAME_SNAPSHOTTER_DEV }} ${{ env.CHART_PATH_SNAPSHOTTER }} \
+            --namespace ${{ secrets.NAMESPACE_DEV }} --create-namespace \
+            --set image.repository=${{ env.REGISTRY }}/${{ env.IMAGE_NAME_SNAPSHOTTER }} \
+            --set image.tag=${{ github.sha }} \
+            --atomic --timeout 10m
+
+  deploy-staging:
+    name: Deploy staging
+    needs: [build-push]
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-kubectl@v4
+      - uses: azure/setup-helm@v4
+      - name: Configure kubeconfig
+        run: echo "${KUBE_CONFIG}" | base64 -d > kubeconfig
+        env:
+          KUBE_CONFIG: ${{ secrets.KUBE_CONFIG_STAGING }}
+      - name: Helm upgrade --install (atomic)
+        env:
+          KUBECONFIG: ${{ github.workspace }}/kubeconfig
+        run: |
+          helm upgrade --install ${{ secrets.RELEASE_NAME_STAGING }} ${{ env.CHART_PATH }} \
+            --namespace ${{ secrets.NAMESPACE_STAGING }} --create-namespace \
+            -f ${{ env.CHART_PATH }}/values.yaml -f ${{ env.CHART_PATH }}/values-staging.yaml \
+            --set image.repository=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }} \
+            --set image.tag=${{ github.ref_name }} \
+            --atomic --timeout 10m
+      - name: Helm deps (CQRS)
+        if: ${{ secrets.ENABLE_CQRS == 'true' }}
+        run: helm dependency update ${{ env.CHART_PATH_CQRS }}
+      - name: Deploy CQRS (command/query)
+        if: ${{ secrets.ENABLE_CQRS == 'true' }}
+        env:
+          KUBECONFIG: ${{ github.workspace }}/kubeconfig
+        run: |
+          helm upgrade --install ${{ secrets.RELEASE_NAME_CQRS_STAGING }} ${{ env.CHART_PATH_CQRS }} \
+            --namespace ${{ secrets.NAMESPACE_STAGING }} --create-namespace \
+            -f ${{ env.CHART_PATH_CQRS }}/values.yaml -f ${{ env.CHART_PATH_CQRS }}/values-staging.yaml \
+            --set command.image.repository=${{ env.REGISTRY }}/${{ env.IMAGE_NAME_COMMAND }} \
+            --set command.image.tag=${{ github.ref_name }} \
+            --set query.image.repository=${{ env.REGISTRY }}/${{ env.IMAGE_NAME_QUERY }} \
+            --set query.image.tag=${{ github.ref_name }} \
+            --atomic --timeout 10m
+      - name: Deploy Projector (optional)
+        if: ${{ secrets.ENABLE_PROJECTOR == 'true' }}
+        env:
+          KUBECONFIG: ${{ github.workspace }}/kubeconfig
+        run: |
+          helm upgrade --install ${{ secrets.RELEASE_NAME_PROJECTOR_STAGING }} ${{ env.CHART_PATH_PROJECTOR }} \
+            --namespace ${{ secrets.NAMESPACE_STAGING }} --create-namespace \
+            --set image.repository=${{ env.REGISTRY }}/${{ env.IMAGE_NAME_PROJECTOR }} \
+            --set image.tag=${{ github.ref_name }} \
+            --atomic --timeout 10m
+      - name: Deploy Snapshotter (optional)
+        if: ${{ secrets.ENABLE_SNAPSHOTTER == 'true' }}
+        env:
+          KUBECONFIG: ${{ github.workspace }}/kubeconfig
+        run: |
+          helm upgrade --install ${{ secrets.RELEASE_NAME_SNAPSHOTTER_STAGING }} ${{ env.CHART_PATH_SNAPSHOTTER }} \
+            --namespace ${{ secrets.NAMESPACE_STAGING }} --create-namespace \
+            --set image.repository=${{ env.REGISTRY }}/${{ env.IMAGE_NAME_SNAPSHOTTER }} \
+            --set image.tag=${{ github.ref_name }} \
+            --atomic --timeout 10m
+
+  deploy-prod:
+    name: Deploy prod
+    needs: [build-push]
+    if: github.event_name == 'release'
+    runs-on: ubuntu-latest
+    environment: prod
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-kubectl@v4
+      - uses: azure/setup-helm@v4
+      - name: Configure kubeconfig
+        run: echo "${KUBE_CONFIG}" | base64 -d > kubeconfig
+        env:
+          KUBE_CONFIG: ${{ secrets.KUBE_CONFIG_PROD }}
+      - name: Helm upgrade --install (atomic)
+        env:
+          KUBECONFIG: ${{ github.workspace }}/kubeconfig
+        run: |
+          helm upgrade --install ${{ secrets.RELEASE_NAME_PROD }} ${{ env.CHART_PATH }} \
+            --namespace ${{ secrets.NAMESPACE_PROD }} --create-namespace \
+            -f ${{ env.CHART_PATH }}/values.yaml -f ${{ env.CHART_PATH }}/values-prod.yaml \
+            --set image.repository=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }} \
+            --set image.tag=${{ github.event.release.tag_name }} \
+            --atomic --timeout 10m
+      - name: Helm deps (CQRS)
+        if: ${{ secrets.ENABLE_CQRS == 'true' }}
+        run: helm dependency update ${{ env.CHART_PATH_CQRS }}
+      - name: Deploy CQRS (command/query)
+        if: ${{ secrets.ENABLE_CQRS == 'true' }}
+        env:
+          KUBECONFIG: ${{ github.workspace }}/kubeconfig
+        run: |
+          helm upgrade --install ${{ secrets.RELEASE_NAME_CQRS_PROD }} ${{ env.CHART_PATH_CQRS }} \
+            --namespace ${{ secrets.NAMESPACE_PROD }} --create-namespace \
+            -f ${{ env.CHART_PATH_CQRS }}/values.yaml -f ${{ env.CHART_PATH_CQRS }}/values-prod.yaml \
+            --set command.image.repository=${{ env.REGISTRY }}/${{ env.IMAGE_NAME_COMMAND }} \
+            --set command.image.tag=${{ github.event.release.tag_name }} \
+            --set query.image.repository=${{ env.REGISTRY }}/${{ env.IMAGE_NAME_QUERY }} \
+            --set query.image.tag=${{ github.event.release.tag_name }} \
+            --atomic --timeout 10m
+      - name: Deploy Projector (optional)
+        if: ${{ secrets.ENABLE_PROJECTOR == 'true' }}
+        env:
+          KUBECONFIG: ${{ github.workspace }}/kubeconfig
+        run: |
+          helm upgrade --install ${{ secrets.RELEASE_NAME_PROJECTOR_PROD }} ${{ env.CHART_PATH_PROJECTOR }} \
+            --namespace ${{ secrets.NAMESPACE_PROD }} --create-namespace \
+            --set image.repository=${{ env.REGISTRY }}/${{ env.IMAGE_NAME_PROJECTOR }} \
+            --set image.tag=${{ github.event.release.tag_name }} \
+            --atomic --timeout 10m
+      - name: Deploy Snapshotter (optional)
+        if: ${{ secrets.ENABLE_SNAPSHOTTER == 'true' }}
+        env:
+          KUBECONFIG: ${{ github.workspace }}/kubeconfig
+        run: |
+          helm upgrade --install ${{ secrets.RELEASE_NAME_SNAPSHOTTER_PROD }} ${{ env.CHART_PATH_SNAPSHOTTER }} \
+            --namespace ${{ secrets.NAMESPACE_PROD }} --create-namespace \
+            --set image.repository=${{ env.REGISTRY }}/${{ env.IMAGE_NAME_SNAPSHOTTER }} \
+            --set image.tag=${{ github.event.release.tag_name }} \
+            --atomic --timeout 10m
+      - name: Deploy Seata (optional)
+        if: ${{ secrets.ENABLE_SEATA == 'true' }}
+        env:
+          KUBECONFIG: ${{ github.workspace }}/kubeconfig
+        run: |
+          helm upgrade --install ${{ secrets.RELEASE_NAME_SEATA_DEV }} ${{ env.CHART_PATH_SEATA }} \
+            --namespace ${{ secrets.NAMESPACE_DEV }} --create-namespace \
+            --atomic --timeout 10m
+      - name: Deploy Saga Topics (optional)
+        if: ${{ secrets.ENABLE_SAGA == 'true' }}
+        env:
+          KUBECONFIG: ${{ github.workspace }}/kubeconfig
+        run: |
+          helm upgrade --install ${{ secrets.RELEASE_NAME_SAGA_TOPICS_DEV }} ${{ env.CHART_PATH_SAGA_TOPICS }} \
+            --namespace kafka --create-namespace \
+            --atomic --timeout 10m
+      - name: Deploy Saga Orchestrator (optional)
+        if: ${{ secrets.ENABLE_SAGA == 'true' }}
+        env:
+          KUBECONFIG: ${{ github.workspace }}/kubeconfig
+        run: |
+          helm upgrade --install ${{ secrets.RELEASE_NAME_SAGA_ORCH_DEV }} ${{ env.CHART_PATH_SAGA_ORCH }} \
+            --namespace ${{ secrets.NAMESPACE_DEV }} --create-namespace \
+            --atomic --timeout 10m
+      - name: Deploy Seata (optional)
+        if: ${{ secrets.ENABLE_SEATA == 'true' }}
+        env:
+          KUBECONFIG: ${{ github.workspace }}/kubeconfig
+        run: |
+          helm upgrade --install ${{ secrets.RELEASE_NAME_SEATA_STAGING }} ${{ env.CHART_PATH_SEATA }} \
+            --namespace ${{ secrets.NAMESPACE_STAGING }} --create-namespace \
+            --atomic --timeout 10m
+      - name: Deploy Saga Topics (optional)
+        if: ${{ secrets.ENABLE_SAGA == 'true' }}
+        env:
+          KUBECONFIG: ${{ github.workspace }}/kubeconfig
+        run: |
+          helm upgrade --install ${{ secrets.RELEASE_NAME_SAGA_TOPICS_STAGING }} ${{ env.CHART_PATH_SAGA_TOPICS }} \
+            --namespace kafka --create-namespace \
+            --atomic --timeout 10m
+      - name: Deploy Saga Orchestrator (optional)
+        if: ${{ secrets.ENABLE_SAGA == 'true' }}
+        env:
+          KUBECONFIG: ${{ github.workspace }}/kubeconfig
+        run: |
+          helm upgrade --install ${{ secrets.RELEASE_NAME_SAGA_ORCH_STAGING }} ${{ env.CHART_PATH_SAGA_ORCH }} \
+            --namespace ${{ secrets.NAMESPACE_STAGING }} --create-namespace \
+            --atomic --timeout 10m
+      - name: Deploy Seata (optional)
+        if: ${{ secrets.ENABLE_SEATA == 'true' }}
+        env:
+          KUBECONFIG: ${{ github.workspace }}/kubeconfig
+        run: |
+          helm upgrade --install ${{ secrets.RELEASE_NAME_SEATA_PROD }} ${{ env.CHART_PATH_SEATA }} \
+            --namespace ${{ secrets.NAMESPACE_PROD }} --create-namespace \
+            --atomic --timeout 10m
+      - name: Deploy Saga Topics (optional)
+        if: ${{ secrets.ENABLE_SAGA == 'true' }}
+        env:
+          KUBECONFIG: ${{ github.workspace }}/kubeconfig
+        run: |
+          helm upgrade --install ${{ secrets.RELEASE_NAME_SAGA_TOPICS_PROD }} ${{ env.CHART_PATH_SAGA_TOPICS }} \
+            --namespace kafka --create-namespace \
+            --atomic --timeout 10m
+      - name: Deploy Saga Orchestrator (optional)
+        if: ${{ secrets.ENABLE_SAGA == 'true' }}
+        env:
+          KUBECONFIG: ${{ github.workspace }}/kubeconfig
+        run: |
+          helm upgrade --install ${{ secrets.RELEASE_NAME_SAGA_ORCH_PROD }} ${{ env.CHART_PATH_SAGA_ORCH }} \
+            --namespace ${{ secrets.NAMESPACE_PROD }} --create-namespace \
+            --atomic --timeout 10m

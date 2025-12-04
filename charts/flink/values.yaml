@@ -1,0 +1,19 @@
+namespace: data-jobs
+enabled: false
+name: sample-job
+image: your.registry.com/data/flink-job:latest
+parallelism: 2
+taskManager:
+  replicas: 1
+job:
+  jarURI: local:///opt/flink/usrlib/job.jar
+  arguments: []
+  upgradeMode: stateless
+  state: running
+  fromSavepoint: ""
+  restartPolicy: fromSavepointOnFailure
+kafka:
+  bootstrapServers: kafka-cluster-kafka-bootstrap.kafka:9092
+  inputTopic: orders.created.v1
+  outputTopic: orders.enriched.v1
+

@@ -1,0 +1,7 @@
+apiVersion: v2
+name: saga-orchestrator
+description: Event-driven Saga orchestrator (choreography/orchestration) with compensation mapping
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+

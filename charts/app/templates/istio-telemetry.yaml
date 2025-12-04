@@ -1,0 +1,14 @@
+{{- if and .Values.istio.enabled .Values.istio.telemetry.enabled }}
+apiVersion: telemetry.istio.io/v1alpha1
+kind: Telemetry
+metadata:
+  name: {{ include "app.fullname" . }}
+spec:
+  selector:
+    matchLabels: {{- include "app.selectorLabels" . | nindent 6 }}
+  tracing:
+    - providers:
+        - name: {{ .Values.istio.telemetry.tracingProvider | quote }}
+      randomSamplingPercentage: {{ .Values.istio.telemetry.sampling }}
+{{- end }}
+

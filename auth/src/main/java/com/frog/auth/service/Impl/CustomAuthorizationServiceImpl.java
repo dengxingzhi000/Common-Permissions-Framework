@@ -8,7 +8,6 @@ import org.springframework.security.oauth2.server.authorization.OAuth2Authorizat
 import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationCode;
 import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationService;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
-import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
 import org.springframework.stereotype.Service;
 
 import java.security.NoSuchAlgorithmException;
@@ -27,17 +26,11 @@ import java.util.Set;
 @Service
 @RequiredArgsConstructor
 public class CustomAuthorizationServiceImpl implements ICustomAuthorizationService {
-    private final RegisteredClientRepository clientRepository;
     private final OAuth2AuthorizationService authorizationService;
 
-    /**
-     * 自定义授权码生成逻辑
-     */
     @Override
-    public OAuth2Authorization createAuthorization(
-            RegisteredClient client,
-            Authentication principal,
-            Set<String> authorizedScopes) {
+    public OAuth2Authorization createAuthorization(RegisteredClient client, Authentication principal,
+                                                   Set<String> authorizedScopes) {
 
         OAuth2Authorization.Builder builder = OAuth2Authorization.withRegisteredClient(client)
                 .principalName(principal.getName())

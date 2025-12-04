@@ -1,0 +1,6 @@
+apiVersion: v2
+name: saga-topics
+description: Strimzi KafkaTopics for Saga command/reply/status per domain
+type: application
+version: 0.1.0
+

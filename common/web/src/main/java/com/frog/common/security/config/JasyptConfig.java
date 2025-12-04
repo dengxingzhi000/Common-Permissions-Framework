@@ -36,6 +36,7 @@ public class JasyptConfig {
         config.setStringOutputType("base64");
 
         encryptor.setConfig(config);
+
         return encryptor;
     }
 }

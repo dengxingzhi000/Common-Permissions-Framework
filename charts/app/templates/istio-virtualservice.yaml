@@ -1,0 +1,50 @@
+{{- if .Values.istio.enabled }}
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: {{ include "app.fullname" . }}
+spec:
+  hosts:
+    {{- if and .Values.istio.gateway.enabled .Values.istio.gateway.hosts }}
+    {{- toYaml .Values.istio.gateway.hosts | nindent 4 }}
+    {{- else }}
+    - {{ include "app.fullname" . }}
+    {{- end }}
+  gateways:
+    {{- if .Values.istio.gateway.enabled }}
+    - {{ printf "%s/%s" .Values.istio.gateway.namespace .Values.istio.gateway.name }}
+    {{- else }}
+    - mesh
+    {{- end }}
+  http:
+    - name: canary-by-header
+      match:
+        - headers:
+            {{ .Values.istio.traffic.canary.header.name }}:
+              exact: {{ .Values.istio.traffic.canary.header.value | quote }}
+      route:
+        - destination:
+            host: {{ include "app.fullname" . }}
+            subset: canary
+          weight: 100
+      timeout: {{ .Values.istio.traffic.timeout }}
+      retries:
+        attempts: {{ .Values.istio.traffic.retries.attempts }}
+        perTryTimeout: {{ .Values.istio.traffic.retries.perTryTimeout }}
+        retryOn: {{ .Values.istio.traffic.retries.retryOn | quote }}
+    - name: weighted-default
+      route:
+        - destination:
+            host: {{ include "app.fullname" . }}
+            subset: stable
+          weight: {{ sub 100 (.Values.istio.traffic.canary.weight | int) }}
+        - destination:
+            host: {{ include "app.fullname" . }}
+            subset: canary
+          weight: {{ .Values.istio.traffic.canary.weight }}
+      timeout: {{ .Values.istio.traffic.timeout }}
+      retries:
+        attempts: {{ .Values.istio.traffic.retries.attempts }}
+        perTryTimeout: {{ .Values.istio.traffic.retries.perTryTimeout }}
+        retryOn: {{ .Values.istio.traffic.retries.retryOn | quote }}
+{{- end }}

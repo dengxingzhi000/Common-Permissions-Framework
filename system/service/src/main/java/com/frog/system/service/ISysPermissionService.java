@@ -18,6 +18,7 @@ import java.util.UUID;
  * @since 2025-10-14
  */
 public interface ISysPermissionService extends IService<SysPermission> {
+
     boolean hasPermission(UUID userId, String permissionCode);
 
     boolean hasResourcePermission(UUID userId, String resourceType,
@@ -30,6 +31,11 @@ public interface ISysPermissionService extends IService<SysPermission> {
     List<PermissionDTO> getPermissionTree();
 
     PermissionDTO getPermissionById(UUID id);
+
+    /**
+     * Find required permission codes by API url and HTTP method.
+     */
+    List<String> findPermissionsByUrl(String url, String method);
 
     void addPermission(PermissionDTO permissionDTO);
 

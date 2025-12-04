@@ -1,0 +1,52 @@
+name: Rollback
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to rollback (dev/staging/prod)'
+        type: choice
+        options: [dev, staging, prod]
+        required: true
+      releaseName:
+        description: 'Helm release name (override)'
+        required: false
+      revision:
+        description: 'Target revision (default previous)'
+        required: false
+
+jobs:
+  helm-rollback:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: azure/setup-kubectl@v4
+      - uses: azure/setup-helm@v4
+      - name: Select env secrets
+        id: sel
+        run: |
+          if [ "${{ github.event.inputs.environment }}" = "dev" ]; then
+            echo ns=${{ secrets.NAMESPACE_DEV }} >> $GITHUB_OUTPUT
+            echo rel=${{ secrets.RELEASE_NAME_DEV }} >> $GITHUB_OUTPUT
+            echo kc=${{ secrets.KUBE_CONFIG_DEV }} >> $GITHUB_OUTPUT
+          elif [ "${{ github.event.inputs.environment }}" = "staging" ]; then
+            echo ns=${{ secrets.NAMESPACE_STAGING }} >> $GITHUB_OUTPUT
+            echo rel=${{ secrets.RELEASE_NAME_STAGING }} >> $GITHUB_OUTPUT
+            echo kc=${{ secrets.KUBE_CONFIG_STAGING }} >> $GITHUB_OUTPUT
+          else
+            echo ns=${{ secrets.NAMESPACE_PROD }} >> $GITHUB_OUTPUT
+            echo rel=${{ secrets.RELEASE_NAME_PROD }} >> $GITHUB_OUTPUT
+            echo kc=${{ secrets.KUBE_CONFIG_PROD }} >> $GITHUB_OUTPUT
+          fi
+      - name: Configure kubeconfig
+        run: echo "${KC}" | base64 -d > kubeconfig
+        env:
+          KC: ${{ steps.sel.outputs.kc }}
+      - name: Helm rollback
+        env:
+          KUBECONFIG: ${{ github.workspace }}/kubeconfig
+        run: |
+          REL="${{ github.event.inputs.releaseName }}"; if [ -z "$REL" ]; then REL="${{ steps.sel.outputs.rel }}"; fi
+          REV="${{ github.event.inputs.revision }}"; if [ -z "$REV" ]; then REV=$(helm history "$REL" -n ${{ steps.sel.outputs.ns }} --output json | jq '.[-2].revision'); fi
+          echo "Rolling back $REL to revision $REV"
+          helm rollback "$REL" "$REV" -n ${{ steps.sel.outputs.ns }}
+

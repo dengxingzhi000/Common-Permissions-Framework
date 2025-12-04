@@ -130,7 +130,7 @@ public class DistributedLock {
         try {
             return action.get();
         } finally {
-            unlock(lockKey, lockId);
+            releaseLock(lockKey, lockId);
         }
     }
 
@@ -158,7 +158,7 @@ public class DistributedLock {
         try {
             return action.get();
         } finally {
-            unlock(lockKey, lockId);
+            releaseLock(lockKey, lockId);
         }
     }
 
@@ -166,10 +166,17 @@ public class DistributedLock {
      * 执行带锁的操作（无返回值）
      */
     public void executeWithLock(String lockKey, Duration expireTime, Runnable action) {
-        executeWithLock(lockKey, expireTime, () -> {
+        String lockId = tryLock(lockKey, expireTime);
+
+        if (lockId == null) {
+            throw new IllegalStateException("Failed to acquire lock: " + lockKey);
+        }
+
+        try {
             action.run();
-            return null;
-        });
+        } finally {
+            releaseLock(lockKey, lockId);
+        }
     }
 
     /**
@@ -211,5 +218,18 @@ public class DistributedLock {
         );
 
         return RELEASE_SUCCESS.equals(result);
+    }
+
+    /**
+     * 释放锁并记录日志
+     *
+     * @param lockKey 锁的key
+     * @param lockId 锁的唯一标识
+     */
+    private void releaseLock(String lockKey, String lockId) {
+        boolean unlocked = unlock(lockKey, lockId);
+        if (!unlocked) {
+            log.warn("Failed to release lock: {}", lockKey);
+        }
     }
 }

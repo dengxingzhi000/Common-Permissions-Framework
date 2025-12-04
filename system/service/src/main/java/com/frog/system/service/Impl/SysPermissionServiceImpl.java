@@ -78,6 +78,13 @@ public class SysPermissionServiceImpl extends ServiceImpl<SysPermissionMapper, S
     }
 
     /**
+     * 根据URL和方法查询需要的权限
+     */
+    public List<String> findPermissionsByUrl(String url, String method) {
+        return sysPermissionMapper.findPermissionsByUrl(url, method);
+    }
+
+    /**
      * 获取权限树
      */
     @Cacheable(

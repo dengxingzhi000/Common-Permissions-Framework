@@ -41,6 +41,7 @@ public class SysPermissionApprovalController {
     )
     public ApiResponse<UUID> submitApproval(@Validated @RequestBody ApprovalDTO approvalDTO) {
         UUID approvalId = approvalService.submitApproval(approvalDTO);
+
         return ApiResponse.success("申请已提交，等待审批", approvalId);
     }
 
@@ -59,6 +60,7 @@ public class SysPermissionApprovalController {
             @PathVariable UUID id,
             @Validated @RequestBody ApprovalProcessDTO dto) {
         approvalService.processApproval(id, dto);
+
         return ApiResponse.success(dto.getApproved() ? "审批通过" : "审批拒绝");
     }
 
@@ -74,6 +76,7 @@ public class SysPermissionApprovalController {
     )
     public ApiResponse<String> withdrawApproval(@PathVariable UUID id) {
         approvalService.withdrawApproval(id);
+
         return ApiResponse.success("申请已撤回");
     }
 
@@ -86,6 +89,7 @@ public class SysPermissionApprovalController {
             @RequestParam(defaultValue = "1") Integer page,
             @RequestParam(defaultValue = "10") Integer size) {
         Page<ApprovalDTO> result = approvalService.getPendingApprovals(page, size);
+
         return ApiResponse.success(PageResult.of(result));
     }
 
@@ -98,6 +102,7 @@ public class SysPermissionApprovalController {
             @RequestParam(defaultValue = "1") Integer page,
             @RequestParam(defaultValue = "10") Integer size) {
         Page<ApprovalDTO> result = approvalService.getMyApplications(page, size);
+
         return ApiResponse.success(PageResult.of(result));
     }
 
@@ -108,6 +113,7 @@ public class SysPermissionApprovalController {
     @Operation(summary = "审批详情")
     public ApiResponse<ApprovalDTO> getApprovalDetail(@PathVariable UUID id) {
         ApprovalDTO detail = approvalService.getApprovalDetail(id);
+
         return ApiResponse.success(detail);
     }
 }

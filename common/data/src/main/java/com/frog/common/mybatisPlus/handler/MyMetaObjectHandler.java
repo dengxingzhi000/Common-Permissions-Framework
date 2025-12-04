@@ -17,17 +17,21 @@ import java.util.UUID;
  */
 @Component
 public class MyMetaObjectHandler implements MetaObjectHandler {
+
     @Override
     public void insertFill(MetaObject metaObject) {
         this.strictInsertFill(metaObject, "createTime", LocalDateTime.class, LocalDateTime.now());
-        this.strictInsertFill(metaObject, "createBy", UUID.class, SecurityUtils.getCurrentUserUuid().orElse(null));
+        this.strictInsertFill(metaObject, "createBy", UUID.class,
+                SecurityUtils.getCurrentUserUuid().orElse(null));
         this.strictInsertFill(metaObject, "updateTime", LocalDateTime.class, LocalDateTime.now());
-        this.strictInsertFill(metaObject, "updateBy", UUID.class, SecurityUtils.getCurrentUserUuid().orElse(null));
+        this.strictInsertFill(metaObject, "updateBy", UUID.class,
+                SecurityUtils.getCurrentUserUuid().orElse(null));
     }
 
     @Override
     public void updateFill(MetaObject metaObject) {
         this.strictUpdateFill(metaObject, "updateTime", LocalDateTime.class, LocalDateTime.now());
-        this.strictUpdateFill(metaObject, "updateBy", UUID.class, SecurityUtils.getCurrentUserUuid().orElse(null));
+        this.strictUpdateFill(metaObject, "updateBy", UUID.class,
+                SecurityUtils.getCurrentUserUuid().orElse(null));
     }
 }

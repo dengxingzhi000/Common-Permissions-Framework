@@ -1,0 +1,33 @@
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: {{ .Values.domain }}.saga.command.{{ .Values.version }}
+  namespace: {{ .Values.namespace }}
+  labels: { strimzi.io/cluster: {{ .Values.clusterName }} }
+spec:
+  partitions: {{ .Values.partitions }}
+  replicas: {{ .Values.replicas }}
+  config: { retention.ms: {{ .Values.retentionMs }} }
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: {{ .Values.domain }}.saga.reply.{{ .Values.version }}
+  namespace: {{ .Values.namespace }}
+  labels: { strimzi.io/cluster: {{ .Values.clusterName }} }
+spec:
+  partitions: {{ .Values.partitions }}
+  replicas: {{ .Values.replicas }}
+  config: { retention.ms: {{ .Values.retentionMs }} }
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: {{ .Values.domain }}.saga.status.{{ .Values.version }}
+  namespace: {{ .Values.namespace }}
+  labels: { strimzi.io/cluster: {{ .Values.clusterName }} }
+spec:
+  partitions: {{ .Values.partitions }}
+  replicas: {{ .Values.replicas }}
+  config: { retention.ms: {{ .Values.retentionMs }} }
+

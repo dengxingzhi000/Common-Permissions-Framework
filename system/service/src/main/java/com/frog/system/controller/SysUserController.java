@@ -49,6 +49,7 @@ public class SysUserController {
                                                  @RequestParam(required = false) String username,
                                                  @RequestParam(required = false) Integer status) {
         Page<UserDTO> result = userService.listUsers(page, size, username, status);
+
         return ApiResponse.success(PageResult.of(result));
     }
 
@@ -59,6 +60,7 @@ public class SysUserController {
     @PreAuthorize("hasAuthority('system:user:list')")
     public ApiResponse<UserDTO> getById(@PathVariable UUID id) {
         UserDTO user = userService.getUserById(id);
+
         return ApiResponse.success(user);
     }
 
@@ -73,6 +75,7 @@ public class SysUserController {
     )
     public ApiResponse<Void> add(@Validated @RequestBody UserDTO userDTO) {
         userService.addUser(userDTO);
+
         return ApiResponse.success();
     }
 
@@ -89,6 +92,7 @@ public class SysUserController {
                                @Validated @RequestBody UserDTO userDTO) {
         userDTO.setId(id);
         userService.updateUser(userDTO);
+
         return ApiResponse.success();
     }
 
@@ -104,6 +108,7 @@ public class SysUserController {
     )
     public ApiResponse<Void> delete(@PathVariable UUID id) {
         userService.deleteUser(id);
+
         return ApiResponse.success();
     }
 
@@ -114,6 +119,7 @@ public class SysUserController {
     public ApiResponse<Void> changePassword(@Validated @RequestBody ChangePasswordRequest request) {
         UUID userId = SecurityUtils.getCurrentUserUuid().orElse(null);
         userService.changePassword(userId, request.getOldPassword(), request.getNewPassword());
+
         return ApiResponse.success();
     }
 
@@ -129,6 +135,7 @@ public class SysUserController {
     )
     public ApiResponse<String> resetPassword(@PathVariable UUID id) {
         String newPassword = userService.resetPassword(id);
+
         return ApiResponse.success(newPassword);
     }
 
@@ -145,6 +152,7 @@ public class SysUserController {
     public ApiResponse<Void> grantRoles(@PathVariable UUID id,
                                    @RequestBody List<UUID> roleIds) {
         userService.grantRoles(id, roleIds);
+
         return ApiResponse.success();
     }
 
@@ -160,6 +168,7 @@ public class SysUserController {
     )
     public ApiResponse<Void> lockUser(@PathVariable UUID id, @RequestParam Boolean lock) {
         userService.lockUser(id, lock);
+
         return ApiResponse.success();
     }
 
@@ -175,6 +184,7 @@ public class SysUserController {
     )
     public ApiResponse<Void> forceLogout(@PathVariable UUID id, @RequestParam String reason) {
         authServiceClient.forceLogout(id, reason);
+
         return ApiResponse.success();
     }
 
@@ -198,6 +208,7 @@ public class SysUserController {
                 dto.getEffectiveTime(),
                 dto.getExpireTime()
         );
+
         return ApiResponse.success("临时角色授予成功");
     }
 
@@ -217,6 +228,7 @@ public class SysUserController {
             @PathVariable UUID roleId,
             @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime newExpireTime) {
         userService.extendTemporaryRole(userId, roleId, newExpireTime);
+
         return ApiResponse.success("临时角色有效期已延长");
     }
 
@@ -235,6 +247,7 @@ public class SysUserController {
             @PathVariable UUID userId,
             @PathVariable UUID roleId) {
         userService.terminateTemporaryRole(userId, roleId);
+
         return ApiResponse.success("临时角色已终止");
     }
 
@@ -246,6 +259,7 @@ public class SysUserController {
     @Operation(summary = "查询用户的临时角色")
     public ApiResponse<List<Map<String, Object>>> getUserTemporaryRoles(@PathVariable UUID id) {
         List<Map<String, Object>> roles = userService.getUserTemporaryRoles(id);
+
         return ApiResponse.success(roles);
     }
 
@@ -257,6 +271,7 @@ public class SysUserController {
     @Operation(summary = "查询用户统计信息")
     public ApiResponse<Map<String, Object>> getUserStatistics(@PathVariable UUID id) {
         Map<String, Object> stats = userService.getUserStatistics(id);
+
         return ApiResponse.success(stats);
     }
 
@@ -264,10 +279,10 @@ public class SysUserController {
      * 更新最后登录信息
      */
     @GetMapping("/{userId}/update-login")
-    ApiResponse<Void> updateLastLogin(
-            @PathVariable("userId") UUID userId,
-            @RequestParam("ipAddress") String ipAddress) {
+    ApiResponse<Void> updateLastLogin(@PathVariable("userId") UUID userId,
+                                      @RequestParam("ipAddress") String ipAddress) {
         userService.updateLastLogin(userId, ipAddress);
+
         return ApiResponse.success();
     }
 }

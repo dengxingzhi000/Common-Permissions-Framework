@@ -20,6 +20,7 @@ import java.util.UUID;
  * @since 2025-10-14
  */
 public interface ISysUserService extends IService<SysUser> {
+
     Page<UserDTO> listUsers(Integer pageNum, Integer pageSize,
                             String username, Integer status);
 

@@ -34,6 +34,7 @@ public class HttpsRedirectConfig {
 
         // 添加HTTP连接器（自动重定向到HTTPS）
         tomcat.addAdditionalTomcatConnectors(createHttpConnector());
+
         return tomcat;
     }
 
@@ -43,6 +44,7 @@ public class HttpsRedirectConfig {
         connector.setPort(8080);
         connector.setSecure(false);
         connector.setRedirectPort(8443); // 重定向到HTTPS端口
+
         return connector;
     }
 }

@@ -20,4 +20,16 @@ public class MtlsProperties {
     private String keystorePassword;
     private Resource truststorePath;
     private String truststorePassword;
+
+    // Enable/disable mTLS client config
+    private boolean enabled = true;
+
+    // OkHttp timeouts (ms)
+    private Integer connectTimeoutMs = 5000;
+    private Integer readTimeoutMs = 10000;
+    private Integer writeTimeoutMs = 10000;
+
+    // OkHttp connection pool
+    private Integer maxIdleConnections = 50;
+    private Long keepAliveMinutes = 5L;
 }

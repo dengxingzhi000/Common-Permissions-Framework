@@ -19,6 +19,7 @@ import org.springframework.stereotype.Component;
 @Component
 @Slf4j
 public class ForceMasterAspect {
+
     @Around("@annotation(forceMaster)")
     public Object around(ProceedingJoinPoint point, ForceMaster forceMaster) throws Throwable {
         try (HintManager hintManager = HintManager.getInstance()) {

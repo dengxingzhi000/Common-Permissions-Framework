@@ -1,0 +1,24 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ .Values.name }}
+spec:
+  schedule: {{ .Values.schedule | quote }}
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: retry
+              image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
+              imagePullPolicy: {{ .Values.image.pullPolicy }}
+              env:
+                - name: KAFKA_BOOTSTRAP
+                  value: {{ .Values.kafka.bootstrapServers | quote }}
+                - name: GROUP_ID
+                  value: {{ .Values.kafka.groupId | quote }}
+                - name: TOPIC_MAPPING
+                  value: {{ toJson .Values.kafka.topics | quote }}
+              resources: {{- toYaml .Values.resources | nindent 14 }}
+

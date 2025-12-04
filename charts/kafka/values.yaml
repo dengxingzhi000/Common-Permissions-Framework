@@ -1,0 +1,61 @@
+namespace: kafka
+
+cluster:
+  enabled: false
+  name: kafka-cluster
+  replicas: 3
+  storage:
+    type: jbod
+    volumes:
+      - id: 0
+        size: 100Gi
+        class: gp3
+  zookeeper:
+    replicas: 3
+    storage:
+      size: 20Gi
+      class: gp3
+
+listeners:
+  - name: plain
+    port: 9092
+    type: internal
+    tls: false
+  - name: tls
+    port: 9093
+    type: internal
+    tls: true
+
+topicsEnabled: true
+topics:
+  # 定义业务主题（会自动创建 .retry 和 .dlq）
+  - name: orders.created.v1
+    partitions: 6
+    replicas: 3
+    retentionMs: 604800000   # 7d
+    cleanupPolicy: delete
+  - name: payments.succeeded.v1
+    partitions: 6
+    replicas: 3
+    retentionMs: 604800000
+    cleanupPolicy: delete
+
+retry:
+  suffix: ".retry"
+  retentionMs: 3600000  # 1h
+  backoffSeconds: 60
+
+dlq:
+  suffix: ".dlq"
+  retentionMs: 1209600000  # 14d
+  cleanupPolicy: delete
+
+users: []
+#  - name: app-producer
+#    acls:
+#      - type: allow
+#        operation: Write
+#        resource:
+#          type: topic
+#          name: orders.created.v1
+#          patternType: literal

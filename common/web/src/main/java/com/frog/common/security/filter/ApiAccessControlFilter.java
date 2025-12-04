@@ -1,6 +1,6 @@
 package com.frog.common.security.filter;
 
-import com.frog.common.feign.client.SysPermissionServiceClient;
+import com.frog.common.access.PermissionAccessPort;
 import com.frog.common.log.enums.SecurityEventType;
 import com.frog.common.log.service.ISysAuditLogService;
 import com.frog.common.security.util.IpUtils;
@@ -31,7 +31,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 @Slf4j
 public class ApiAccessControlFilter extends OncePerRequestFilter {
-    private final SysPermissionServiceClient permissionServiceClient;
+    private final PermissionAccessPort permissionAccess;
     private final ISysAuditLogService auditLogService;
 
     // 白名单路径（不需要权限检查）
@@ -46,10 +46,8 @@ public class ApiAccessControlFilter extends OncePerRequestFilter {
     );
 
     @Override
-    protected void doFilterInternal(@NonNull HttpServletRequest request,
-                                    @NonNull HttpServletResponse response,
-                                    @NonNull FilterChain filterChain)
-            throws ServletException, IOException {
+    protected void doFilterInternal(@NonNull HttpServletRequest request, @NonNull HttpServletResponse response,
+            @NonNull FilterChain filterChain) throws ServletException, IOException {
 
         String requestUri = request.getRequestURI();
         String method = request.getMethod();
@@ -69,7 +67,7 @@ public class ApiAccessControlFilter extends OncePerRequestFilter {
         }
 
         // 查询该API需要的权限
-        List<String> requiredPermissions = permissionServiceClient
+        List<String> requiredPermissions = permissionAccess
                 .findPermissionsByUrl(requestUri, method);
 
         if (requiredPermissions.isEmpty()) {
@@ -79,7 +77,7 @@ public class ApiAccessControlFilter extends OncePerRequestFilter {
         }
 
         // 获取用户权限
-        Set<String> userPermissions = permissionServiceClient
+        Set<String> userPermissions = permissionAccess
                 .findAllPermissionsByUserId(userId);
 
         // 检查用户是否拥有所需权限

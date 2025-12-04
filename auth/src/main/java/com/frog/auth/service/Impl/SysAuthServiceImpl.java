@@ -1,6 +1,7 @@
 package com.frog.auth.service.Impl;
 
 import com.frog.common.feign.client.SysUserServiceClient;
+import com.frog.system.api.UserDubboService;
 import com.frog.common.metrics.BusinessMetrics;
 import com.frog.common.web.domain.SecurityUser;
 import com.frog.common.security.properties.JwtProperties;
@@ -26,6 +27,7 @@ import org.springframework.util.StringUtils;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
@@ -49,13 +51,11 @@ public class SysAuthServiceImpl implements ISysAuthService {
     private final JwtProperties jwtProperties;
     private final BusinessMetrics businessMetrics;
     private final TotpUtils totpUtils;
+    private final UserDubboService userDubboService;
 
     private static final String LOGIN_ATTEMPTS_PREFIX = "login:attempts:";
     private static final String ACCOUNT_LOCK_PREFIX = "account:lock:";
 
-    /**
-     * 用户登录
-     */
     @Override
     @Transactional
     public LoginResponse login(LoginRequest request, String ipAddress, String deviceId) {
@@ -83,6 +83,15 @@ public class SysAuthServiceImpl implements ISysAuthService {
 
             SecurityUser user = (SecurityUser) authentication.getPrincipal();
 
+            // MFA verification (single path)
+            if (Boolean.TRUE.equals(user.getTwoFactorEnabled())) {
+                if (!verifyTwoFactor(user.getTwoFactorSecret(), request.getTwoFactorCode(), user.getUserId())) {
+                    auditLogService.recordLoginFailure(username, ipAddress, "MFA verification failed");
+                    businessMetrics.recordLoginAttempt(false, "mfa");
+                    throw new BadCredentialsException("Invalid MFA code");
+                }
+            }
+
             // 4. 检查双因素认证
             if (user.getTwoFactorEnabled() && !verifyTwoFactor(request.getTwoFactorCode(), user.getUserId())) {
                 if (!totpUtils.verifyCode(user.getTwoFactorSecret(), request.getTwoFactorCode())) {
@@ -103,22 +112,28 @@ public class SysAuthServiceImpl implements ISysAuthService {
             // 6. 生成Token
             Set<String> roles = user.getRoles();
             Set<String> permissions = user.getPermissions();
-
+            List<String> amr = Boolean.TRUE.equals(user.getTwoFactorEnabled()) ? List.of("pwd","mfa") :
+                    List.of("pwd");
             String accessToken = jwtUtils.generateAccessToken(
-                    user.getUserId(), username, roles, permissions, deviceId, ipAddress);
+                    user.getUserId(), username, roles, permissions, deviceId, ipAddress, amr);
             String refreshToken = jwtUtils.generateRefreshToken(
                     user.getUserId(), username, deviceId);
 
             // 7. 清除登录失败记录
             clearLoginAttempts(username);
 
-            // 8. 更新最后登录信息
-            userServiceClient.updateLastLogin(user.getUserId(), ipAddress, LocalDateTime.now());
+            // 8. 更新最后登录信息（优先 Dubbo，失败回退 Feign）
+            try {
+                userDubboService.updateLastLogin(user.getUserId(), ipAddress, LocalDateTime.now());
+            } catch (Exception ex) {
+                userServiceClient.updateLastLogin(user.getUserId(), ipAddress, LocalDateTime.now());
+            }
 
             // 9. 记录登录日志
             auditLogService.recordLogin(user.getUserId(), username, ipAddress, true, "登录成功");
 
             // 10. 记录登录成功指标
+            clearLoginAttempts(username);
             businessMetrics.recordLogin(true, deviceId);
 
             log.info("User login success: {}, IP: {}, Device: {}", username, ipAddress, deviceId);
@@ -184,14 +199,26 @@ public class SysAuthServiceImpl implements ISysAuthService {
     }
 
     private boolean verifyTwoFactor(String code, UUID userId) {
-        // TODO: 实现TOTP双因素认证验证逻辑
-        // 可以使用Google Authenticator的库
-        return StringUtils.hasText(code);
+        // Deprecated path kept for backward compatibility; unified check is done earlier.
+        return true;
     }
 
-    /**
-     * 用户登出
-     */
+    private boolean verifyTwoFactor(String secret, String code, UUID userId) {
+        if (!StringUtils.hasText(secret) || !StringUtils.hasText(code)) {
+            return false;
+        }
+
+        boolean valid = totpUtils.verifyCode(secret, code);
+        if (!valid) {
+            return false;
+        }
+
+        String replayKey = "mfa:totp:used:" + userId + ":" + code;
+        Boolean firstUse = redisTemplate.opsForValue()
+                .setIfAbsent(replayKey, System.currentTimeMillis(), Duration.ofSeconds(90));
+        return Boolean.TRUE.equals(firstUse);
+    }
+
     @Override
     public void logout(String token, UUID userId, String reason) {
         jwtUtils.revokeToken(token, reason != null ? reason : "用户主动登出");
@@ -199,12 +226,9 @@ public class SysAuthServiceImpl implements ISysAuthService {
         log.info("User logout: UserId={}", userId);
     }
 
-    /**
-     * 刷新Token
-     */
     @Override
     public LoginResponse refreshToken(String refreshToken, String deviceId, String ipAddress) {
-        if (jwtUtils.validateRefreshToken(refreshToken)) {
+        if (!jwtUtils.validateRefreshToken(refreshToken)) {
             throw new BadCredentialsException("刷新令牌无效或已过期");
         }
 
@@ -230,9 +254,6 @@ public class SysAuthServiceImpl implements ISysAuthService {
                 .build();
     }
 
-    /**
-     * 强制用户下线
-     */
     @Override
     public void forceLogout(UUID userId, String reason) {
         jwtUtils.revokeAllUserTokens(userId);

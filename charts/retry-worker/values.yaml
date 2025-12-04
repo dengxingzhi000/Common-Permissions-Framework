@@ -1,0 +1,22 @@
+name: eda-retry
+image:
+  repository: your.registry.com/ops/eda-retry-worker
+  tag: latest
+  pullPolicy: IfNotPresent
+kafka:
+  bootstrapServers: kafka-cluster-kafka-bootstrap.kafka:9092
+  groupId: eda-retry-worker
+  topics:
+    - base: orders.created.v1
+      retry: orders.created.v1.retry
+      dlq: orders.created.v1.dlq
+      backoffSeconds: 60
+schedule: "*/5 * * * *"  # CronJob
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+

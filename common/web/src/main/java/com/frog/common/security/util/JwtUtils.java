@@ -81,6 +81,32 @@ public class JwtUtils {
     }
 
     /**
+     * 生成访问令牌（可指定 AMR）
+     */
+    public String generateAccessToken(UUID userId, String username,
+                                      Set<String> roles, Set<String> permissions,
+                                      String deviceId, String ipAddress,
+                                      java.util.List<String> amr) {
+        String jti = java.util.UUID.randomUUID().toString();
+        String tokenType = "access";
+
+        java.util.Map<String, Object> claims = buildClaims(
+                userId, username, roles, permissions,
+                tokenType, deviceId, ipAddress, jti
+        );
+        claims.put("amr", amr);
+
+        String token = createToken(claims, userId.toString(),
+                jwtProperties.getExpiration());
+
+        // 存储Token元数据
+        storeTokenMetadata(userId, deviceId, token, jti, ipAddress,
+                jwtProperties.getExpiration());
+
+        return token;
+    }
+
+    /**
      * 生成刷新令牌
      */
     public String generateRefreshToken(UUID userId, String username, String deviceId) {
@@ -261,6 +287,17 @@ public class JwtUtils {
     public String getUsernameFromToken(String token) {
         Claims claims = parseToken(token);
         return (String) claims.get("username");
+    }
+
+    /**
+     * 从Token中提取 AMR（认证方法引用）
+     */
+    @SuppressWarnings("unchecked")
+    public java.util.Set<String> getAmrFromToken(String token) {
+        Claims claims = parseToken(token);
+        if (claims == null) return java.util.Collections.emptySet();
+        java.util.List<String> amr = (java.util.List<String>) claims.get("amr");
+        return amr != null ? new java.util.HashSet<>(amr) : java.util.Collections.emptySet();
     }
 
     // ==================== 私有方法 ====================

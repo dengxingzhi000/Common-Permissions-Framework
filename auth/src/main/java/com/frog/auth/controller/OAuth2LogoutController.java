@@ -30,7 +30,7 @@ public class OAuth2LogoutController {
             @RequestParam(required = false) String clientId) {
 
         // 解析Token
-        String accessToken = token.substring(7); // 去掉"Bearer "
+        String accessToken = token.replace("Bearer ", ""); // 去掉"Bearer "
         UUID userId = jwtUtils.getUserIdFromToken(accessToken);
 
         // 撤销所有该用户的授权

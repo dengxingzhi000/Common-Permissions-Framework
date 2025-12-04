@@ -1,0 +1,20 @@
+{{- if and .Values.istio.enabled .Values.istio.gateway.enabled }}
+apiVersion: networking.istio.io/v1beta1
+kind: Gateway
+metadata:
+  name: {{ .Values.istio.gateway.name }}
+  namespace: {{ .Values.istio.gateway.namespace }}
+spec:
+  selector: {{- toYaml .Values.istio.gateway.selector | nindent 4 }}
+  servers:
+    - port:
+        number: 80
+        name: http
+        protocol: HTTP
+      hosts: {{- toYaml .Values.istio.gateway.hosts | nindent 8 }}
+      {{- if .Values.istio.gateway.tls.enabled }}
+      tls:
+        httpsRedirect: true
+      {{- end }}
+{{- end }}
+

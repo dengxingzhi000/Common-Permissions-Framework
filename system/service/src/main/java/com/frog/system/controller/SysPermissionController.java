@@ -32,6 +32,7 @@ public class SysPermissionController {
     @PreAuthorize("hasAuthority('system:permission:list')")
     public ApiResponse<List<PermissionDTO>> tree() {
         List<PermissionDTO> tree = permissionService.getPermissionTree();
+
         return ApiResponse.success(tree);
     }
 
@@ -47,6 +48,7 @@ public class SysPermissionController {
     )
     public ApiResponse<Void> add(@Validated @RequestBody PermissionDTO permissionDTO) {
         permissionService.addPermission(permissionDTO);
+
         return ApiResponse.success();
     }
 
@@ -64,6 +66,7 @@ public class SysPermissionController {
                                    @Validated @RequestBody PermissionDTO permissionDTO) {
         permissionDTO.setId(id);
         permissionService.updatePermission(permissionDTO);
+
         return ApiResponse.success();
     }
 
@@ -79,6 +82,7 @@ public class SysPermissionController {
     )
     public ApiResponse<Void> delete(@PathVariable UUID id) {
         permissionService.deletePermission(id);
+
         return ApiResponse.success();
     }
 
@@ -89,6 +93,7 @@ public class SysPermissionController {
     @PreAuthorize("hasAuthority('system:permission:list')")
     public ApiResponse<PermissionDTO> getById(@PathVariable UUID id) {
         PermissionDTO permissionDTO = permissionService.getPermissionById(id);
+
         return ApiResponse.success(permissionDTO);
     }
 }
