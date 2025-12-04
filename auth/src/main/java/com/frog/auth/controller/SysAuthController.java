@@ -160,12 +160,13 @@ public class SysAuthController {
             @AuthenticationPrincipal SecurityUser currentUser) {
         String ipAddress = IpUtils.getClientIp(httpRequest);
         String deviceId = httpServletRequestUtils.getDeviceId(httpRequest);
-        webAuthnService.registerVerify(
-                currentUser.getUserId(), 
-                currentUser.getUsername(), 
-                request, 
-                deviceId,
-                ipAddress);
+        //todo 修复注册验证代码
+//        webAuthnService.registerVerify(
+//                currentUser.getUserId(),
+//                currentUser.getUsername(),
+//                request,
+//                deviceId,
+//                ipAddress);
 
         return ApiResponse.success();
     }

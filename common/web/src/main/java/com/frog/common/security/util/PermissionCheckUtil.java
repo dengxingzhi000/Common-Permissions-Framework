@@ -22,6 +22,7 @@ import java.util.stream.Collectors;
  */
 @Component
 public class PermissionCheckUtil {
+
     /**
      * 验证当前用户是否拥有指定权限
      */

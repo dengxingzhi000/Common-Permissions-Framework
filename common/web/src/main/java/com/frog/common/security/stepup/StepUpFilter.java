@@ -2,6 +2,8 @@ package com.frog.common.security.stepup;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.frog.common.log.service.ISysAuditLogService;
+import com.frog.common.security.util.HttpServletRequestUtils;
+import com.frog.common.security.util.JwtUtils;
 import com.frog.common.web.domain.SecurityUser;
 import com.frog.common.web.util.SecurityUtils;
 import jakarta.servlet.FilterChain;
@@ -27,8 +29,8 @@ import java.util.UUID;
 public class StepUpFilter extends OncePerRequestFilter {
     private final StepUpEvaluator evaluator;
     private final ISysAuditLogService auditLogService;
-    private final com.frog.common.security.util.JwtUtils jwtUtils;
-    private final com.frog.common.security.util.HttpServletRequestUtils requestUtils;
+    private final JwtUtils jwtUtils;
+    private final HttpServletRequestUtils requestUtils;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Override

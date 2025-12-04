@@ -47,7 +47,8 @@ public class PkceAuthorizationCodeTokenResponseClient
         String storedChallenge = pkceChallengeStore.load(authRequest.getAuthorizationRequestUri());
         if (storedChallenge == null) {
             throw new OAuth2AuthorizationException(
-                    new OAuth2Error(OAuth2ErrorCodes.INVALID_GRANT, "Missing stored code_challenge", null)
+                    new OAuth2Error(OAuth2ErrorCodes.INVALID_GRANT, "Missing stored code_challenge",
+                            null)
             );
         }
 

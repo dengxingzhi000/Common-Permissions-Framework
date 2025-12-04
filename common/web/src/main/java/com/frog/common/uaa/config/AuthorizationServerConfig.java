@@ -56,7 +56,6 @@ import java.util.UUID;
 @Configuration
 @RequiredArgsConstructor
 public class AuthorizationServerConfig {
-
     @Value("${security.oauth2.authorizationserver.issuer:http://localhost:8090}")
     private String issuer;
 
@@ -69,6 +68,7 @@ public class AuthorizationServerConfig {
     private String keyAlias;
     @Value("${security.oauth2.authorizationserver.jwk.key-password:}")
     private String keyPassword;
+
     /**
      * OAuth2授权服务器安全过滤链
      */

@@ -34,6 +34,7 @@ public class SysDeptController {
     @Operation(summary = "查询部门树")
     public ApiResponse<List<DeptDTO>> tree() {
         List<DeptDTO> tree = deptService.getDeptTree();
+
         return ApiResponse.success(tree);
     }
 
@@ -46,6 +47,7 @@ public class SysDeptController {
     )
     public ApiResponse<Void> add(@Validated @RequestBody DeptDTO deptDTO) {
         deptService.addDept(deptDTO);
+
         return ApiResponse.success();
     }
 
@@ -60,6 +62,7 @@ public class SysDeptController {
                                     @Validated @RequestBody DeptDTO deptDTO) {
         deptDTO.setId(id);
         deptService.updateDept(deptDTO);
+
         return ApiResponse.success();
     }
 
@@ -72,6 +75,7 @@ public class SysDeptController {
     )
     public ApiResponse<Void> delete(@PathVariable UUID id) {
         deptService.deleteDept(id);
+
         return ApiResponse.success();
     }
 }

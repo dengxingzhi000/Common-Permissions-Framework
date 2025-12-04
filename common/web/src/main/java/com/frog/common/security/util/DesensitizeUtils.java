@@ -8,6 +8,7 @@ package com.frog.common.security.util;
  * @version 1.0
  */
 public class DesensitizeUtils {
+
     /**
      * 手机号脱敏
      * 138****1234
